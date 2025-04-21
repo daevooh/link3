@@ -4,19 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Link3 Developer Portal{% endblock %}</title>
+    <!-- Favicon -->
+    <link rel="icon" href="/static/images/logo.png" type="image/png">
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
+        :root {
+            --primary-color: #278783;
+            --primary-hover: #1e6561;
+            --secondary-color: #ffebd3;
+        }
+        
         .sidebar {
             min-height: calc(100vh - 56px);
             background-color: #f8f9fa;
             border-right: 1px solid #dee2e6;
         }
+        
         .main-content {
             padding: 20px;
         }
+        
         .api-key-box {
             background-color: #f8f9fa;
             border: 1px solid #dee2e6;
@@ -24,9 +34,56 @@
             padding: 15px;
             margin-bottom: 20px;
         }
+        
+        .navbar {
+            background-color: var(--primary-color) !important;
+        }
+        
         .nav-link.active {
-            background-color: #007bff;
+            background-color: var(--primary-color) !important;
             color: white !important;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+            border-color: var(--primary-hover);
+        }
+        
+        .btn-outline-primary {
+            color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .btn-outline-primary:hover {
+            background-color: var(--primary-color);
+        }
+        
+        .bg-primary {
+            background-color: var(--primary-color) !important;
+        }
+        
+        .text-primary {
+            color: var(--primary-color) !important;
+        }
+        
+        .list-group-item.active {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .alert-success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+        }
+        
+        .alert-info {
+            background-color: var(--secondary-color);
+            border-color: #ffe0b8;
         }
     </style>
     {% block extra_css %}{% endblock %}
@@ -35,7 +92,10 @@
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
-            <a class="navbar-brand" href="{% url 'developer_portal:dashboard' %}">Link3 Developer Portal</a>
+            <a class="navbar-brand d-flex align-items-center" href="/">
+                <img src="/static/images/logo.png" alt="Link3 Logo" height="36" class="me-2">
+                <span>Link3 Developer Portal</span>
+            </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -52,6 +112,11 @@
                     </li>
                 </ul>
                 <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">
+                            <i class="fas fa-home me-1"></i> Home
+                        </a>
+                    </li>
                     <li class="nav-item">
                         <a class="nav-link" href="#">Sign Out</a>
                     </li>
@@ -70,9 +135,6 @@
                     </a>
                     <a href="{% url 'developer_portal:documentation' %}" class="list-group-item list-group-item-action {% if request.resolver_match.url_name == 'documentation' %}active{% endif %}">
                         <i class="fas fa-book me-2"></i> Documentation
-                    </a>
-                    <a href="{% url 'developer_portal:tokenization_rules' %}" class="list-group-item list-group-item-action {% if request.resolver_match.url_name == 'tokenization_rules' %}active{% endif %}">
-                        <i class="fas fa-coins me-2"></i> Tokenization Rules
                     </a>
                     <a href="{% url 'developer_portal:api_keys' %}" class="list-group-item list-group-item-action {% if request.resolver_match.url_name == 'api_keys' %}active{% endif %}">
                         <i class="fas fa-key me-2"></i> API Keys

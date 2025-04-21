@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from users.models import Project, AppUser, DeveloperProfile
 from blockchain.models import BlockchainNetwork, ProjectToken
 from tokenization.models import TokenizationRule, Interaction
+from .models import APIKey
 from .decorators import verified_developer_required
 from django.utils import timezone
 from django.core.mail import send_mail
@@ -102,16 +103,41 @@ def api_keys(request):
     """API keys management view"""
     projects = Project.objects.filter(developer=request.user, is_active=True)
     selected_project = projects.first()
+    new_api_key = None
     
     if request.method == 'POST' and selected_project:
-        # Logic to regenerate API key would go here
-        # For now, just show a message
-        messages.success(request, "API key regenerated successfully!")
-        return redirect('developer_portal:api_keys')
+        # Create a new API key
+        name = request.POST.get('name')
+        scope = request.POST.get('scope', 'read_write')
+        
+        if name:
+            # Create the new API key
+            api_key = APIKey.objects.create(
+                project=selected_project,
+                name=name,
+                scope=scope
+            )
+            
+            # Store the newly created key to display to the user
+            new_api_key = {
+                'name': api_key.name,
+                'key': api_key.key,
+                'prefix': api_key.prefix,
+                'scope': api_key.scope
+            }
+            
+            messages.success(request, f"API key '{name}' created successfully!")
+    
+    # Get all API keys for the selected project
+    api_keys = []
+    if selected_project:
+        api_keys = APIKey.objects.filter(project=selected_project, is_active=True).order_by('-created_at')
     
     context = {
         'projects': projects,
         'selected_project': selected_project,
+        'api_keys': api_keys,
+        'new_api_key': new_api_key
     }
     return render(request, 'developer_portal/api_keys.html', context)
 
@@ -122,12 +148,22 @@ def delete_api_key(request):
     if request.method == 'POST':
         key_id = request.POST.get('key_id')
         if key_id:
-            # Find projects owned by the current user
-            projects = Project.objects.filter(developer=request.user, is_active=True)
-            
-            # In a production environment, you would need a proper API key model
-            # For now we'll just show a success message as if the key was deleted
-            messages.success(request, "API key deleted successfully.")
+            try:
+                # Find the API key and ensure it belongs to the current user
+                api_key = APIKey.objects.filter(
+                    id=key_id, 
+                    project__developer=request.user
+                ).first()
+                
+                if api_key:
+                    # Mark as inactive instead of deleting
+                    api_key.is_active = False
+                    api_key.save()
+                    messages.success(request, "API key deleted successfully.")
+                else:
+                    messages.error(request, "API key not found or you don't have permission.")
+            except Exception as e:
+                messages.error(request, f"Error deleting API key: {str(e)}")
         else:
             messages.error(request, "Invalid API key ID.")
     
@@ -277,12 +313,19 @@ def create_project(request):
                 name=name,
                 description=description,
                 website=website,
-                api_key=api_key,
+                api_key=api_key,  # Keep for backward compatibility
                 developer=request.user,
                 # Set a default token name and symbol based on project name
                 token_name=f"{name} Token",
                 token_symbol=name[:4].upper(),
                 token_supply=1000000  # Default token supply
+            )
+            
+            # Create an initial API key for the project
+            APIKey.objects.create(
+                project=project,
+                name="Default API Key",
+                scope="read_write"
             )
             
             messages.success(request, f"Project '{name}' created successfully!")
