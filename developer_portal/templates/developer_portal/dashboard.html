@@ -1,0 +1,387 @@
+{% extends 'developer_portal/base.html' %}
+
+{% block title %}Dashboard - Link3 Developer Portal{% endblock %}
+
+{% block page_title %}
+    Developer Dashboard
+    {% if not selected_project %}
+        <a href="{% url 'developer_portal:create_project' %}" class="btn btn-primary btn-sm float-end">
+            <i class="fas fa-plus-circle me-1"></i> Create Project
+        </a>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+{% if not selected_project %}
+<div class="row mb-4 justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-rocket fa-4x text-primary mb-4"></i>
+                <h3 class="mb-3">Welcome to Link3!</h3>
+                <p class="lead mb-4">You don't have any projects yet. Create your first project to get started with tokenization.</p>
+                <a href="{% url 'developer_portal:create_project' %}" class="btn btn-primary btn-lg px-5">
+                    <i class="fas fa-plus-circle me-2"></i> Create Your First Project
+                </a>
+                <div class="mt-4 text-muted">
+                    <p>Need help? Check our <a href="{% url 'developer_portal:documentation' %}">documentation</a> or contact support.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="row mb-4">
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card h-100 border-left-primary">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <div class="small text-muted mb-1">Total Users</div>
+                        <div class="h3 mb-0">{{ user_count|default:"0" }}</div>
+                        <div class="small text-success mt-2">
+                            <i class="fas fa-arrow-up me-1"></i>
+                            <span>12% increase</span>
+                        </div>
+                    </div>
+                    <div class="ms-3">
+                        <i class="fas fa-users fa-2x text-primary"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card h-100 border-left-success">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <div class="small text-muted mb-1">Total Tokens Awarded</div>
+                        <div class="h3 mb-0">{{ total_tokens|default:"0"|floatformat:2 }}</div>
+                        <div class="small text-success mt-2">
+                            <i class="fas fa-arrow-up me-1"></i>
+                            <span>8% increase</span>
+                        </div>
+                    </div>
+                    <div class="ms-3">
+                        <i class="fas fa-coins fa-2x text-success"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card h-100 border-left-info">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <div class="small text-muted mb-1">API Calls (Today)</div>
+                        <div class="h3 mb-0">{{ api_calls_today|default:"0" }}</div>
+                        <div class="small text-success mt-2">
+                            <i class="fas fa-arrow-up me-1"></i>
+                            <span>5% increase</span>
+                        </div>
+                    </div>
+                    <div class="ms-3">
+                        <i class="fas fa-exchange-alt fa-2x text-info"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card h-100 border-left-warning">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <div class="small text-muted mb-1">Token Redemptions</div>
+                        <div class="h3 mb-0">{{ redemption_count|default:"0" }}</div>
+                        <div class="small text-success mt-2">
+                            <i class="fas fa-arrow-up me-1"></i>
+                            <span>18% increase</span>
+                        </div>
+                    </div>
+                    <div class="ms-3">
+                        <i class="fas fa-link fa-2x text-warning"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i> User Activity</h5>
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="timeframeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        Last 7 Days
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="timeframeDropdown">
+                        <li><a class="dropdown-item active" href="#">Last 7 Days</a></li>
+                        <li><a class="dropdown-item" href="#">Last 30 Days</a></li>
+                        <li><a class="dropdown-item" href="#">This Month</a></li>
+                        <li><a class="dropdown-item" href="#">This Year</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="chart-container" style="height: 300px;">
+                    <canvas id="userActivityChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-list me-2"></i> Recent Activity</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    <div class="list-group-item py-3">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">User registered</h6>
+                            <small class="text-muted">3 mins ago</small>
+                        </div>
+                        <p class="mb-1">New user with ID: user_38291 registered</p>
+                    </div>
+                    <div class="list-group-item py-3">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">Tokens awarded</h6>
+                            <small class="text-muted">12 mins ago</small>
+                        </div>
+                        <p class="mb-1">User user_29481 earned 5 tokens for login</p>
+                    </div>
+                    <div class="list-group-item py-3">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">API key generated</h6>
+                            <small class="text-muted">1 hour ago</small>
+                        </div>
+                        <p class="mb-1">New API key generated for your project</p>
+                    </div>
+                    <div class="list-group-item py-3">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">Token redemption</h6>
+                            <small class="text-muted">2 hours ago</small>
+                        </div>
+                        <p class="mb-1">User user_10573 redeemed 100 tokens</p>
+                    </div>
+                    <div class="list-group-item py-3">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">Tokens awarded</h6>
+                            <small class="text-muted">3 hours ago</small>
+                        </div>
+                        <p class="mb-1">User user_18437 earned 10 tokens for content creation</p>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer text-center">
+                <a href="{% url 'developer_portal:analytics' %}" class="text-decoration-none">View All Activity</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8 mb-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-users me-2"></i> Top Users</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>User ID</th>
+                                <th>Token Balance</th>
+                                <th>Wallet Connected</th>
+                                <th>Last Seen</th>
+                                <th>Interactions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in top_users %}
+                                <tr>
+                                    <td>{{ user.external_id }}</td>
+                                    <td>{{ user.token_balance }}</td>
+                                    <td>
+                                        {% if user.wallet_address %}
+                                            <i class="fas fa-check-circle text-success"></i>
+                                        {% else %}
+                                            <i class="fas fa-times-circle text-danger"></i>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ user.last_seen|date:"M d, Y H:i" }}</td>
+                                    <td>{{ user.interaction_count }}</td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4">No user data available</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4 mb-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-project-diagram me-2"></i> Project Info</h5>
+            </div>
+            <div class="card-body">
+                {% if selected_project %}
+                    <div class="mb-3">
+                        <h6>Project Name</h6>
+                        <p>{{ selected_project.name }}</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6>API Key</h6>
+                        <div class="input-group mb-1">
+                            <input type="text" class="form-control" value="{{ selected_project.api_key }}" readonly>
+                            <button class="btn btn-outline-secondary" type="button" onclick="copyApiKey()">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <div class="small text-muted">Use this key to authenticate API requests</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6>Token Status</h6>
+                        {% if selected_project.token_contract_address %}
+                            <div class="badge bg-success mb-2">Deployed</div>
+                            <p>Contract Address: {{ selected_project.token_contract_address|truncatechars:18 }}</p>
+                        {% else %}
+                            <div class="badge bg-warning mb-2">Not Deployed</div>
+                            <p>Configure and deploy your token to start on-chain integration</p>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'developer_portal:settings' %}" class="btn btn-primary">
+                            <i class="fas fa-cog me-1"></i> Project Settings
+                        </a>
+                        <a href="{% url 'developer_portal:documentation' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-book me-1"></i> View API Docs
+                        </a>
+                    </div>
+                {% else %}
+                    <div class="text-center p-4">
+                        <i class="fas fa-exclamation-circle fa-3x text-warning mb-3"></i>
+                        <h5>No Project Selected</h5>
+                        <p>Please contact support to set up your project.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-tasks me-2"></i> Getting Started</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    <div class="list-group-item d-flex align-items-center p-3">
+                        <div class="form-check me-2">
+                            <input class="form-check-input" type="checkbox" id="step1" {% if selected_project %}checked{% endif %}>
+                        </div>
+                        <span>Create your project</span>
+                    </div>
+                    <div class="list-group-item d-flex align-items-center p-3">
+                        <div class="form-check me-2">
+                            <input class="form-check-input" type="checkbox" id="step2" {% if selected_project and selected_project.api_key %}checked{% endif %}>
+                        </div>
+                        <span>Get your API key</span>
+                    </div>
+                    <div class="list-group-item d-flex align-items-center p-3">
+                        <div class="form-check me-2">
+                            <input class="form-check-input" type="checkbox" id="step3" {% if has_tokenization_rules %}checked{% endif %}>
+                        </div>
+                        <span>Configure tokenization rules</span>
+                    </div>
+                    <div class="list-group-item d-flex align-items-center p-3">
+                        <div class="form-check me-2">
+                            <input class="form-check-input" type="checkbox" id="step4" {% if has_test_interaction %}checked{% endif %}>
+                        </div>
+                        <span>Test your first interaction</span>
+                    </div>
+                    <div class="list-group-item d-flex align-items-center p-3">
+                        <div class="form-check me-2">
+                            <input class="form-check-input" type="checkbox" id="step5" {% if selected_project and selected_project.token_contract_address %}checked{% endif %}>
+                        </div>
+                        <span>Deploy your token</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // User Activity Chart
+    const userActivityCanvas = document.getElementById('userActivityChart');
+    if (userActivityCanvas) {
+        const ctx = userActivityCanvas.getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Apr 15', 'Apr 16', 'Apr 17', 'Apr 18', 'Apr 19', 'Apr 20', 'Apr 21'],
+                datasets: [{
+                    label: 'User Interactions',
+                    data: [65, 78, 52, 91, 43, 56, 61],
+                    borderColor: '#4e73df',
+                    backgroundColor: 'rgba(78, 115, 223, 0.1)',
+                    tension: 0.3,
+                    fill: true
+                }, {
+                    label: 'Tokens Awarded',
+                    data: [32, 39, 26, 46, 22, 28, 31],
+                    borderColor: '#1cc88a',
+                    backgroundColor: 'rgba(28, 200, 138, 0.1)',
+                    tension: 0.3,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+});
+
+// Copy API key to clipboard
+function copyApiKey() {
+    const apiKeyInput = document.querySelector('input[value="{{ selected_project.api_key }}"]');
+    apiKeyInput.select();
+    navigator.clipboard.writeText(apiKeyInput.value)
+        .then(() => {
+            alert('API key copied to clipboard!');
+        })
+        .catch(err => {
+            console.error('Could not copy text: ', err);
+        });
+}
+</script>
+{% endblock %}

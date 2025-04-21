@@ -1,0 +1,469 @@
+w{% extends 'developer_portal/base.html' %}
+
+{% block title %}Analytics - Link3 Developer Portal{% endblock %}
+
+{% block page_title %}Analytics Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .chart-container {
+        min-height: 300px;
+    }
+    .metric-card {
+        text-align: center;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+    .metric-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    .metric-icon {
+        font-size: 2rem;
+        margin-bottom: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if selected_project %}
+    <!-- Key Metrics -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card metric-card bg-primary text-white">
+                <div class="card-body">
+                    <div class="metric-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h3 class="card-title">{{ user_count|default:"0" }}</h3>
+                    <p class="card-text">Total Users</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card metric-card bg-success text-white">
+                <div class="card-body">
+                    <div class="metric-icon">
+                        <i class="fas fa-exchange-alt"></i>
+                    </div>
+                    <h3 class="card-title">{{ interaction_count|default:"0" }}</h3>
+                    <p class="card-text">Total Interactions</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card metric-card bg-info text-white">
+                <div class="card-body">
+                    <div class="metric-icon">
+                        <i class="fas fa-coins"></i>
+                    </div>
+                    <h3 class="card-title">{{ total_tokens|default:"0"|floatformat:2 }}</h3>
+                    <p class="card-text">Total Tokens Awarded</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card metric-card bg-warning text-dark">
+                <div class="card-body">
+                    <div class="metric-icon">
+                        <i class="fas fa-link"></i>
+                    </div>
+                    <h3 class="card-title" id="conversionRate">0%</h3>
+                    <p class="card-text">On-Chain Conversion Rate</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Time Series Charts -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i> Interaction Trend</h5>
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-sm btn-outline-secondary active" onclick="updateTimeFrame('weekly')">Weekly</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="updateTimeFrame('monthly')">Monthly</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="updateTimeFrame('yearly')">Yearly</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="interactionTrendChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i> Action Types</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="actionTypesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- User Engagement and Token Distribution -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-user-clock me-2"></i> User Engagement</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="userEngagementChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-coins me-2"></i> Token Distribution</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="tokenDistributionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Interactions Table -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-history me-2"></i> Recent Interactions</h5>
+            <div>
+                <button class="btn btn-sm btn-outline-primary" onclick="exportData('csv')">
+                    <i class="fas fa-file-csv me-2"></i> Export CSV
+                </button>
+                <button class="btn btn-sm btn-outline-primary ms-2" onclick="exportData('json')">
+                    <i class="fas fa-file-code me-2"></i> Export JSON
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover" id="interactionsTable">
+                    <thead>
+                        <tr>
+                            <th>User ID</th>
+                            <th>Action Type</th>
+                            <th>Tokens Earned</th>
+                            <th>Date/Time</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if interactions %}
+                            {% for interaction in interactions|slice:":10" %}
+                                <tr>
+                                    <td>{{ interaction.user.external_id }}</td>
+                                    <td>{{ interaction.action_type }}</td>
+                                    <td>{{ interaction.tokens_earned }}</td>
+                                    <td>{{ interaction.timestamp|date:"M d, Y H:i" }}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-secondary"
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#interactionModal"
+                                                data-id="{{ interaction.id }}"
+                                                data-user="{{ interaction.user.external_id }}"
+                                                data-action="{{ interaction.action_type }}"
+                                                data-tokens="{{ interaction.tokens_earned }}"
+                                                data-timestamp="{{ interaction.timestamp|date:"M d, Y H:i" }}"
+                                                data-metadata="{{ interaction.metadata|safe }}">
+                                            <i class="fas fa-search"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4">
+                                    <i class="fas fa-info-circle fa-2x text-muted mb-3"></i>
+                                    <p class="mb-0">No interaction data available</p>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="text-center mt-3">
+                <a href="#" class="btn btn-outline-primary">View All Interactions</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interaction Detail Modal -->
+    <div class="modal fade" id="interactionModal" tabindex="-1" aria-labelledby="interactionModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="interactionModalLabel">Interaction Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-4 fw-bold">User ID:</div>
+                        <div class="col-8" id="modalUserId"></div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-4 fw-bold">Action Type:</div>
+                        <div class="col-8" id="modalActionType"></div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-4 fw-bold">Tokens Earned:</div>
+                        <div class="col-8" id="modalTokensEarned"></div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-4 fw-bold">Timestamp:</div>
+                        <div class="col-8" id="modalTimestamp"></div>
+                    </div>
+                    <div class="row">
+                        <div class="col-12 fw-bold">Metadata:</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-12">
+                            <pre id="modalMetadata" class="bg-light p-3 mt-2 rounded" style="max-height: 200px; overflow-y: auto;"></pre>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% else %}
+    <div class="alert alert-warning">
+        <h4 class="alert-heading">No Project Selected</h4>
+        <p>You need an active project to view analytics. Contact Link3 support to set up your project.</p>
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+
+<script>
+    // Sample data for charts - in a real implementation, this would come from your backend
+    const weeklyData = {
+        labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+        datasets: [{
+            label: 'Interactions',
+            data: [65, 59, 80, 81],
+            borderColor: '#0d6efd',
+            backgroundColor: 'rgba(13, 110, 253, 0.2)',
+            tension: 0.3,
+            fill: true
+        }]
+    };
+    
+    const monthlyData = {
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
+        datasets: [{
+            label: 'Interactions',
+            data: [250, 310, 280, 390, 410],
+            borderColor: '#0d6efd',
+            backgroundColor: 'rgba(13, 110, 253, 0.2)',
+            tension: 0.3,
+            fill: true
+        }]
+    };
+    
+    const actionTypeData = {
+        labels: ['Login', 'Like', 'Comment', 'Share', 'Video Watch', 'Profile Completion'],
+        datasets: [{
+            data: [30, 25, 15, 10, 15, 5],
+            backgroundColor: [
+                '#4bc0c0', '#36a2eb', '#ff6384', '#ffcd56', '#9966ff', '#ff9f40'
+            ]
+        }]
+    };
+    
+    const userEngagementData = {
+        labels: ['Daily', 'Weekly', 'Monthly', 'Inactive'],
+        datasets: [{
+            data: [20, 35, 25, 20],
+            backgroundColor: ['#28a745', '#17a2b8', '#ffc107', '#dc3545']
+        }]
+    };
+    
+    const tokenDistributionData = {
+        labels: ['0-10', '11-50', '51-100', '101-500', '500+'],
+        datasets: [{
+            label: 'Number of Users',
+            data: [40, 25, 15, 12, 8],
+            backgroundColor: '#17a2b8',
+            borderWidth: 1
+        }]
+    };
+
+    // Create charts when the page loads
+    window.addEventListener('DOMContentLoaded', function() {
+        // Interaction trend chart
+        const interactionTrendCanvas = document.getElementById('interactionTrendChart');
+        if (interactionTrendCanvas) {
+            const interactionTrendChart = new Chart(interactionTrendCanvas, {
+                type: 'line',
+                data: weeklyData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Interactions'
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Store chart reference for updates
+            window.interactionTrendChart = interactionTrendChart;
+        }
+        
+        // Action types chart
+        const actionTypesCanvas = document.getElementById('actionTypesChart');
+        if (actionTypesCanvas) {
+            new Chart(actionTypesCanvas, {
+                type: 'pie',
+                data: actionTypeData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+        
+        // User engagement chart
+        const userEngagementCanvas = document.getElementById('userEngagementChart');
+        if (userEngagementCanvas) {
+            new Chart(userEngagementCanvas, {
+                type: 'doughnut',
+                data: userEngagementData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+        
+        // Token distribution chart
+        const tokenDistributionCanvas = document.getElementById('tokenDistributionChart');
+        if (tokenDistributionCanvas) {
+            new Chart(tokenDistributionCanvas, {
+                type: 'bar',
+                data: tokenDistributionData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Users'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Token Range'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Set a sample conversion rate
+        document.getElementById('conversionRate').textContent = '25%';
+        
+        // Set up modal event handlers
+        const interactionModal = document.getElementById('interactionModal');
+        if (interactionModal) {
+            interactionModal.addEventListener('show.bs.modal', function (event) {
+                const button = event.relatedTarget;
+                const userId = button.getAttribute('data-user');
+                const actionType = button.getAttribute('data-action');
+                const tokensEarned = button.getAttribute('data-tokens');
+                const timestamp = button.getAttribute('data-timestamp');
+                const metadata = button.getAttribute('data-metadata');
+                
+                const modalUserId = document.getElementById('modalUserId');
+                const modalActionType = document.getElementById('modalActionType');
+                const modalTokensEarned = document.getElementById('modalTokensEarned');
+                const modalTimestamp = document.getElementById('modalTimestamp');
+                const modalMetadata = document.getElementById('modalMetadata');
+                
+                modalUserId.textContent = userId;
+                modalActionType.textContent = actionType;
+                modalTokensEarned.textContent = tokensEarned;
+                modalTimestamp.textContent = timestamp;
+                
+                try {
+                    const metadataObj = JSON.parse(metadata);
+                    modalMetadata.textContent = JSON.stringify(metadataObj, null, 2);
+                } catch (e) {
+                    modalMetadata.textContent = metadata || '{}';
+                }
+            });
+        }
+    });
+    
+    // Update chart data based on selected time frame
+    function updateTimeFrame(timeFrame) {
+        if (!window.interactionTrendChart) return;
+        
+        const chart = window.interactionTrendChart;
+        
+        if (timeFrame === 'weekly') {
+            chart.data = weeklyData;
+        } else if (timeFrame === 'monthly') {
+            chart.data = monthlyData;
+        } else {
+            // Yearly data - would be added in a real implementation
+            chart.data = monthlyData; // Using monthly as a placeholder
+        }
+        
+        chart.update();
+        
+        // Update active button state
+        document.querySelectorAll('.btn-group .btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        event.target.classList.add('active');
+    }
+    
+    // Export table data
+    function exportData(format) {
+        // In a real implementation, this would trigger a download of the actual data
+        alert(`Exporting data in ${format.toUpperCase()} format...`);
+        
+        // Example of how you might implement this
+        // window.location.href = `/api/export-interactions?project_id=${projectId}&format=${format}`;
+    }
+</script>
+{% endblock %}

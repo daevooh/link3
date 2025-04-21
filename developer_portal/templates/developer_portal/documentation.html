@@ -1,0 +1,641 @@
+{% extends 'developer_portal/base.html' %}
+
+{% block title %}API Documentation - Link3 Developer Portal{% endblock %}
+
+{% block page_title %}API Documentation{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-3 mb-4">
+        <div class="card sticky-top" style="top: 1rem; z-index: 1;">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-book me-2"></i> API Reference</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    <a href="#introduction" class="list-group-item list-group-item-action">Introduction</a>
+                    <a href="#authentication" class="list-group-item list-group-item-action">Authentication</a>
+                    <a href="#users" class="list-group-item list-group-item-action">Users API</a>
+                    <a href="#interactions" class="list-group-item list-group-item-action">Interactions API</a>
+                    <a href="#tokens" class="list-group-item list-group-item-action">Tokens API</a>
+                    <a href="#blockchain" class="list-group-item list-group-item-action">Blockchain API</a>
+                    <a href="#webhooks" class="list-group-item list-group-item-action">Webhooks</a>
+                    <a href="#errors" class="list-group-item list-group-item-action">Errors</a>
+                    <a href="#rate-limits" class="list-group-item list-group-item-action">Rate Limits</a>
+                    <a href="#sdks" class="list-group-item list-group-item-action">SDKs & Libraries</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-9">
+        <!-- Introduction Section -->
+        <div class="card mb-4" id="introduction">
+            <div class="card-header">
+                <h5 class="mb-0">Introduction</h5>
+            </div>
+            <div class="card-body">
+                <h6 class="mb-3">Welcome to the Link3 API</h6>
+                <p>
+                    The Link3 API provides a programmatic interface to the Link3 platform, enabling you to 
+                    integrate tokenization into your application. With our API, you can create and manage users,
+                    track interactions that earn tokens, and handle token transactions.
+                </p>
+                
+                <h6 class="mt-4 mb-3">Base URL</h6>
+                <p>All API endpoints are relative to the base URL:</p>
+                <div class="bg-light p-3 rounded">
+                    <pre><code>https://api.link3.dev/v1/</code></pre>
+                </div>
+                
+                <h6 class="mt-4 mb-3">Request Format</h6>
+                <p>
+                    The API accepts request data in JSON format. Always include the header 
+                    <code>Content-Type: application/json</code> when sending a request body.
+                </p>
+                
+                <h6 class="mt-4 mb-3">Response Format</h6>
+                <p>
+                    All API responses are returned in JSON format and have a consistent structure:
+                </p>
+                <div class="bg-light p-3 rounded">
+                    <pre><code>{
+  "status": "success", // or "error"
+  "data": {
+    // Response data
+  },
+  "message": "Optional message"
+}</code></pre>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Authentication Section -->
+        <div class="card mb-4" id="authentication">
+            <div class="card-header">
+                <h5 class="mb-0">Authentication</h5>
+            </div>
+            <div class="card-body">
+                <h6 class="mb-3">API Key Authentication</h6>
+                <p>
+                    All requests to the Link3 API must be authenticated using your API key. 
+                    You can generate and manage API keys in the <a href="{% url 'developer_portal:api_keys' %}">API Keys</a> section.
+                </p>
+                
+                <h6 class="mt-4 mb-3">Authentication Header</h6>
+                <p>
+                    Include your API key in the <code>Authorization</code> header of your requests:
+                </p>
+                <div class="bg-light p-3 rounded">
+                    <pre><code>Authorization: Bearer YOUR_API_KEY</code></pre>
+                </div>
+                
+                <div class="alert alert-info mt-4">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Note:</strong> Keep your API key secure. Do not expose it in client-side code or version control systems.
+                </div>
+                
+                <h6 class="mt-4 mb-3">Example Request</h6>
+                <div class="bg-light p-3 rounded">
+                    <pre><code>curl -X GET \
+  "https://api.link3.dev/v1/users/" \
+  -H "Authorization: Bearer YOUR_API_KEY"</code></pre>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Users API Section -->
+        <div class="card mb-4" id="users">
+            <div class="card-header">
+                <h5 class="mb-0">Users API</h5>
+            </div>
+            <div class="card-body">
+                <p>
+                    The Users API allows you to create and manage user records in the Link3 platform.
+                    These users can earn and spend tokens based on their interactions with your application.
+                </p>
+                
+                <h6 class="mt-4 mb-3">Create a User</h6>
+                <p><code>POST /users/</code></p>
+                <p>Creates a new user in the Link3 platform.</p>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="mt-3 mb-2">Request Body</h6>
+                        <div class="bg-light p-3 rounded">
+                            <pre><code>{
+  "external_id": "user_123", // Your internal user ID
+  "email": "user@example.com", // Optional
+  "nickname": "JohnDoe", // Optional
+  "metadata": { // Optional
+    "age": 30,
+    "country": "US",
+    "interests": ["gaming", "technology"]
+  }
+}</code></pre>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="mt-3 mb-2">Response</h6>
+                        <div class="bg-light p-3 rounded">
+                            <pre><code>{
+  "status": "success",
+  "data": {
+    "user_id": "user_123",
+    "created_at": "2025-04-21T10:42:45Z",
+    "token_balance": 0
+  },
+  "message": "User created successfully"
+}</code></pre>
+                        </div>
+                    </div>
+                </div>
+                
+                <h6 class="mt-4 mb-3">Get User</h6>
+                <p><code>GET /users/{user_id}/</code></p>
+                <p>Retrieves a user's information including their token balance.</p>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="mt-3 mb-2">Parameters</h6>
+                        <ul>
+                            <li><code>user_id</code> (path parameter): The user's external ID</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="mt-3 mb-2">Response</h6>
+                        <div class="bg-light p-3 rounded">
+                            <pre><code>{
+  "status": "success",
+  "data": {
+    "user_id": "user_123",
+    "created_at": "2025-04-21T10:42:45Z",
+    "last_active": "2025-04-21T11:30:22Z",
+    "token_balance": 25,
+    "wallet_connected": false,
+    "wallet_address": null,
+    "metadata": {
+      "age": 30,
+      "country": "US"
+    }
+  }
+}</code></pre>
+                        </div>
+                    </div>
+                </div>
+                
+                <h6 class="mt-4 mb-3">List Users</h6>
+                <p><code>GET /users/</code></p>
+                <p>Retrieves a paginated list of users in your project.</p>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="mt-3 mb-2">Query Parameters</h6>
+                        <ul>
+                            <li><code>page</code>: Page number (default: 1)</li>
+                            <li><code>page_size</code>: Results per page (default: 20, max: 100)</li>
+                            <li><code>sort_by</code>: Field to sort by (created_at, token_balance)</li>
+                            <li><code>sort_order</code>: "asc" or "desc" (default: desc)</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="mt-3 mb-2">Response</h6>
+                        <div class="bg-light p-3 rounded">
+                            <pre><code>{
+  "status": "success",
+  "data": {
+    "users": [
+      {
+        "user_id": "user_123",
+        "created_at": "2025-04-21T10:42:45Z",
+        "token_balance": 25
+      },
+      // More users...
+    ],
+    "pagination": {
+      "page": 1,
+      "page_size": 20,
+      "total_pages": 5,
+      "total_items": 98
+    }
+  }
+}</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Interactions API Section -->
+        <div class="card mb-4" id="interactions">
+            <div class="card-header">
+                <h5 class="mb-0">Interactions API</h5>
+            </div>
+            <div class="card-body">
+                <p>
+                    The Interactions API allows you to record user actions in your application that can earn tokens
+                    based on the tokenization rules you've configured.
+                </p>
+                
+                <h6 class="mt-4 mb-3">Record an Interaction</h6>
+                <p><code>POST /interactions/</code></p>
+                <p>Records a user interaction that may earn tokens based on your tokenization rules.</p>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="mt-3 mb-2">Request Body</h6>
+                        <div class="bg-light p-3 rounded">
+                            <pre><code>{
+  "user_id": "user_123", // Required
+  "action": "content_view", // Required
+  "metadata": { // Optional
+    "content_id": "article_456",
+    "category": "technology",
+    "duration_seconds": 120
+  }
+}</code></pre>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="mt-3 mb-2">Response</h6>
+                        <div class="bg-light p-3 rounded">
+                            <pre><code>{
+  "status": "success",
+  "data": {
+    "interaction_id": "int_789012",
+    "user_id": "user_123",
+    "action": "content_view",
+    "timestamp": "2025-04-21T14:25:12Z",
+    "tokens_earned": 2,
+    "new_balance": 27
+  },
+  "message": "Interaction recorded successfully"
+}</code></pre>
+                        </div>
+                    </div>
+                </div>
+                
+                <h6 class="mt-4 mb-3">Get User Interactions</h6>
+                <p><code>GET /users/{user_id}/interactions/</code></p>
+                <p>Retrieves a list of interactions for a specific user.</p>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="mt-3 mb-2">Parameters</h6>
+                        <ul>
+                            <li><code>user_id</code> (path parameter): The user's external ID</li>
+                            <li><code>page</code>: Page number (default: 1)</li>
+                            <li><code>page_size</code>: Results per page (default: 20, max: 100)</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="mt-3 mb-2">Response</h6>
+                        <div class="bg-light p-3 rounded">
+                            <pre><code>{
+  "status": "success",
+  "data": {
+    "interactions": [
+      {
+        "interaction_id": "int_789012",
+        "action": "content_view",
+        "timestamp": "2025-04-21T14:25:12Z",
+        "tokens_earned": 2
+      },
+      // More interactions...
+    ],
+    "pagination": {
+      "page": 1,
+      "page_size": 20,
+      "total_pages": 2,
+      "total_items": 32
+    }
+  }
+}</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tokens API Section -->
+        <div class="card mb-4" id="tokens">
+            <div class="card-header">
+                <h5 class="mb-0">Tokens API</h5>
+            </div>
+            <div class="card-body">
+                <p>
+                    The Tokens API allows you to manage token balances, transfers, and redemptions.
+                </p>
+                
+                <h6 class="mt-4 mb-3">Get Token Balance</h6>
+                <p><code>GET /tokens/balance/{user_id}/</code></p>
+                <p>Retrieves the current token balance for a user.</p>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="mt-3 mb-2">Parameters</h6>
+                        <ul>
+                            <li><code>user_id</code> (path parameter): The user's external ID</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="mt-3 mb-2">Response</h6>
+                        <div class="bg-light p-3 rounded">
+                            <pre><code>{
+  "status": "success",
+  "data": {
+    "user_id": "user_123",
+    "token_balance": 27,
+    "total_earned": 35,
+    "total_spent": 8
+  }
+}</code></pre>
+                        </div>
+                    </div>
+                </div>
+                
+                <h6 class="mt-4 mb-3">Transfer Tokens</h6>
+                <p><code>POST /tokens/transfer/</code></p>
+                <p>Transfers tokens from one user to another.</p>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="mt-3 mb-2">Request Body</h6>
+                        <div class="bg-light p-3 rounded">
+                            <pre><code>{
+  "from_user_id": "user_123",
+  "to_user_id": "user_456",
+  "amount": 10,
+  "memo": "Gift for helping"
+}</code></pre>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="mt-3 mb-2">Response</h6>
+                        <div class="bg-light p-3 rounded">
+                            <pre><code>{
+  "status": "success",
+  "data": {
+    "transaction_id": "txn_ab3def",
+    "from_user_id": "user_123",
+    "to_user_id": "user_456",
+    "amount": 10,
+    "timestamp": "2025-04-21T15:30:45Z",
+    "from_new_balance": 17,
+    "to_new_balance": 25
+  },
+  "message": "Transfer completed successfully"
+}</code></pre>
+                        </div>
+                    </div>
+                </div>
+                
+                <h6 class="mt-4 mb-3">Create a Redemption</h6>
+                <p><code>POST /tokens/redeem/</code></p>
+                <p>Redeems tokens for a reward or benefit.</p>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="mt-3 mb-2">Request Body</h6>
+                        <div class="bg-light p-3 rounded">
+                            <pre><code>{
+  "user_id": "user_123",
+  "amount": 15,
+  "reward_id": "reward_789",
+  "metadata": {
+    "delivery_email": "user@example.com"
+  }
+}</code></pre>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="mt-3 mb-2">Response</h6>
+                        <div class="bg-light p-3 rounded">
+                            <pre><code>{
+  "status": "success",
+  "data": {
+    "redemption_id": "rdm_4561ab",
+    "user_id": "user_123",
+    "reward_id": "reward_789",
+    "amount": 15,
+    "timestamp": "2025-04-21T16:45:22Z",
+    "new_balance": 2,
+    "status": "completed"
+  },
+  "message": "Redemption processed successfully"
+}</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- More API sections can be added similarly -->
+        
+        <div class="card mb-4" id="blockchain">
+            <div class="card-header">
+                <h5 class="mb-0">Blockchain API</h5>
+            </div>
+            <div class="card-body">
+                <p>
+                    The Blockchain API provides endpoints to interact with the on-chain components of your Link3 integration.
+                </p>
+                
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Note:</strong> Blockchain API requires a deployed token contract. Visit the
+                    <a href="{% url 'developer_portal:token_settings' %}">Token Settings</a> page to deploy your token if you haven't done so yet.
+                </div>
+                
+                <!-- More documentation content here -->
+                <p>Documentation for this section is being updated. Check back soon for detailed API endpoints.</p>
+            </div>
+        </div>
+        
+        <div class="card mb-4" id="errors">
+            <div class="card-header">
+                <h5 class="mb-0">Error Handling</h5>
+            </div>
+            <div class="card-body">
+                <p>
+                    The Link3 API uses conventional HTTP response codes to indicate the success or failure of an API request.
+                    In general, codes in the 2xx range indicate success, codes in the 4xx range indicate an error that resulted
+                    from the provided information (e.g., a required parameter was missing), and codes in the 5xx range indicate
+                    an error with Link3's servers.
+                </p>
+                
+                <h6 class="mt-4 mb-3">Error Response Format</h6>
+                <div class="bg-light p-3 rounded">
+                    <pre><code>{
+  "status": "error",
+  "error": {
+    "code": "invalid_request",
+    "message": "Description of what went wrong",
+    "details": { /* Additional error information */ }
+  }
+}</code></pre>
+                </div>
+                
+                <h6 class="mt-4 mb-3">Common Error Codes</h6>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Error Code</th>
+                                <th>HTTP Status</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>invalid_request</code></td>
+                                <td>400</td>
+                                <td>The request was unacceptable, often due to missing a required parameter.</td>
+                            </tr>
+                            <tr>
+                                <td><code>authentication_error</code></td>
+                                <td>401</td>
+                                <td>No valid API key provided.</td>
+                            </tr>
+                            <tr>
+                                <td><code>permission_error</code></td>
+                                <td>403</td>
+                                <td>The API key doesn't have permissions to perform the request.</td>
+                            </tr>
+                            <tr>
+                                <td><code>resource_not_found</code></td>
+                                <td>404</td>
+                                <td>The requested resource doesn't exist.</td>
+                            </tr>
+                            <tr>
+                                <td><code>rate_limit_exceeded</code></td>
+                                <td>429</td>
+                                <td>Too many requests hit the API too quickly.</td>
+                            </tr>
+                            <tr>
+                                <td><code>server_error</code></td>
+                                <td>500</td>
+                                <td>Something went wrong on Link3's end.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card" id="sdks">
+            <div class="card-header">
+                <h5 class="mb-0">SDKs & Libraries</h5>
+            </div>
+            <div class="card-body">
+                <p>
+                    To make integration with Link3 easier, we provide client libraries for several programming languages.
+                </p>
+                
+                <div class="row mt-4">
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h6 class="mb-0"><i class="fab fa-js me-2"></i> JavaScript</h6>
+                            </div>
+                            <div class="card-body">
+                                <p>Install via npm:</p>
+                                <div class="bg-light p-2 rounded">
+                                    <pre><code>npm install link3-sdk</code></pre>
+                                </div>
+                                <p class="mt-3">Basic usage:</p>
+                                <div class="bg-light p-2 rounded">
+                                    <pre><code>const Link3 = require('link3-sdk');
+const client = new Link3.Client('YOUR_API_KEY');
+
+client.recordInteraction({
+  user_id: 'user_123',
+  action: 'login'
+})
+.then(response => console.log(response))
+.catch(error => console.error(error));</code></pre>
+                                </div>
+                                <div class="mt-3">
+                                    <a href="#" class="text-decoration-none">View on GitHub <i class="fas fa-external-link-alt"></i></a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h6 class="mb-0"><i class="fab fa-python me-2"></i> Python</h6>
+                            </div>
+                            <div class="card-body">
+                                <p>Install via pip:</p>
+                                <div class="bg-light p-2 rounded">
+                                    <pre><code>pip install link3-sdk</code></pre>
+                                </div>
+                                <p class="mt-3">Basic usage:</p>
+                                <div class="bg-light p-2 rounded">
+                                    <pre><code>import link3
+
+client = link3.Client('YOUR_API_KEY')
+
+response = client.record_interaction(
+    user_id='user_123',
+    action='login'
+)
+
+print(response)</code></pre>
+                                </div>
+                                <div class="mt-3">
+                                    <a href="#" class="text-decoration-none">View on GitHub <i class="fas fa-external-link-alt"></i></a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Smooth scrolling for anchor links
+    document.querySelectorAll('.card-body a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function(e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                window.scrollTo({
+                    top: target.offsetTop - 20,
+                    behavior: 'smooth'
+                });
+            }
+        });
+    });
+    
+    // Highlight active section in the sidebar
+    const sections = document.querySelectorAll('.card[id]');
+    const navLinks = document.querySelectorAll('.list-group-item-action');
+    
+    window.addEventListener('scroll', () => {
+        let current = '';
+        sections.forEach(section => {
+            const sectionTop = section.offsetTop;
+            const sectionHeight = section.clientHeight;
+            if (pageYOffset >= sectionTop - 100) {
+                current = section.getAttribute('id');
+            }
+        });
+        
+        navLinks.forEach(link => {
+            link.classList.remove('active');
+            if (link.getAttribute('href') === `#${current}`) {
+                link.classList.add('active');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

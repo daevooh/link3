@@ -1,0 +1,471 @@
+{% extends 'developer_portal/base.html' %}
+
+{% block title %}Tokenization Rules - Link3 Developer Portal{% endblock %}
+
+{% block page_title %}Tokenization Rules{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-cogs me-2"></i> Tokenization Rules</h5>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addRuleModal">
+                    <i class="fas fa-plus me-2"></i> Add Rule
+                </button>
+            </div>
+            <div class="card-body">
+                <p class="lead">Configure how users earn tokens for different actions in your application.</p>
+                
+                {% if selected_project %}
+                    {% if rules %}
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Action Type</th>
+                                        <th>Base Token Amount</th>
+                                        <th>Cooldown</th>
+                                        <th>Multiplier</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for rule in rules %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ rule.action_type|title }}</strong>
+                                                {% if rule.custom_action_name %}
+                                                    <br><small class="text-muted">({{ rule.custom_action_name }})</small>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ rule.base_amount }}</td>
+                                            <td>
+                                                {% if rule.cooldown_hours %}
+                                                    {{ rule.cooldown_hours }} hours
+                                                {% elif rule.cooldown_minutes %}
+                                                    {{ rule.cooldown_minutes }} minutes
+                                                {% else %}
+                                                    {% if rule.one_time %}
+                                                    One-time
+                                                    {% else %}
+                                                    None
+                                                    {% endif %}
+                                                {% endif %}
+                                            </td>
+                                            <td>{% if rule.multiplier %}{{ rule.multiplier }}x{% else %}-{% endif %}</td>
+                                            <td>
+                                                {% if rule.is_active %}
+                                                    <span class="badge bg-success">Active</span>
+                                                {% else %}
+                                                    <span class="badge bg-danger">Inactive</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-sm btn-outline-primary" onclick="editRule('{{ rule.id }}')">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger" onclick="deleteRule('{{ rule.id }}')">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-cogs fa-4x text-muted mb-3"></i>
+                            <h4>No Rules Configured Yet</h4>
+                            <p class="text-muted">Create your first tokenization rule to start rewarding users</p>
+                            <button class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#addRuleModal">
+                                <i class="fas fa-plus me-2"></i> Add Your First Rule
+                            </button>
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <div class="alert alert-warning">
+                        <h4 class="alert-heading">No Project Selected</h4>
+                        <p>You need an active project to manage tokenization rules. Contact Link3 support to set up your project.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i> About Tokenization Rules</h5>
+            </div>
+            <div class="card-body">
+                <p>Tokenization rules define how users earn tokens for performing different actions in your application.</p>
+                
+                <h6 class="mt-4">Rule Components</h6>
+                <ul>
+                    <li><strong>Action Type:</strong> The type of user action (login, like, comment, etc.)</li>
+                    <li><strong>Base Amount:</strong> The base number of tokens awarded for the action</li>
+                    <li><strong>Cooldown:</strong> Minimum time between rewards for the same action</li>
+                    <li><strong>Multiplier:</strong> Optional factor to multiply the base amount</li>
+                    <li><strong>One-time:</strong> If enabled, the user can only earn tokens for this action once</li>
+                </ul>
+                
+                <div class="alert alert-info">
+                    <i class="fas fa-lightbulb me-2"></i>
+                    <strong>Tip:</strong> Customize your tokenization strategy to incentivize valuable user behaviors and engagement.
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-flask me-2"></i> Testing Your Rules</h5>
+            </div>
+            <div class="card-body">
+                <p>Use this tool to test how your tokenization rules would apply to different user actions.</p>
+                
+                <form>
+                    <div class="mb-3">
+                        <label for="test_action_type" class="form-label">Action Type</label>
+                        <select class="form-select" id="test_action_type">
+                            <option value="login">Login</option>
+                            <option value="like">Like</option>
+                            <option value="comment">Comment</option>
+                            <option value="share">Share</option>
+                            <option value="purchase">Purchase</option>
+                            <option value="video_watch">Video Watch</option>
+                            <option value="profile_completion">Profile Completion</option>
+                            <option value="custom">Custom Action</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3" id="custom_action_div" style="display: none;">
+                        <label for="test_custom_action" class="form-label">Custom Action Name</label>
+                        <input type="text" class="form-control" id="test_custom_action" placeholder="Enter custom action name">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="test_metadata" class="form-label">Metadata (JSON)</label>
+                        <textarea class="form-control" id="test_metadata" rows="3" placeholder='{"key": "value"}'></textarea>
+                        <div class="form-text">Optional metadata for the action</div>
+                    </div>
+                    
+                    <button type="button" class="btn btn-primary" onclick="testTokenization()">
+                        <i class="fas fa-play me-2"></i> Test Tokenization
+                    </button>
+                </form>
+                
+                <div class="mt-4" id="testResultContainer" style="display: none;">
+                    <h6>Test Result:</h6>
+                    <div class="alert alert-success" id="testResultOutput">
+                        <!-- Test results will appear here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Rule Modal -->
+<div class="modal fade" id="addRuleModal" tabindex="-1" aria-labelledby="addRuleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addRuleModalLabel">Add Tokenization Rule</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="ruleForm">
+                    <input type="hidden" id="rule_id">
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="action_type" class="form-label">Action Type</label>
+                            <select class="form-select" id="action_type" name="action_type" required onchange="toggleCustomActionField()">
+                                <option value="login">Login</option>
+                                <option value="like">Like</option>
+                                <option value="comment">Comment</option>
+                                <option value="share">Share</option>
+                                <option value="purchase">Purchase</option>
+                                <option value="video_watch">Video Watch</option>
+                                <option value="profile_completion">Profile Completion</option>
+                                <option value="custom">Custom Action</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6" id="custom_action_name_div" style="display: none;">
+                            <label for="custom_action_name" class="form-label">Custom Action Name</label>
+                            <input type="text" class="form-control" id="custom_action_name" name="custom_action_name" placeholder="e.g., complete_survey">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="base_amount" class="form-label">Base Token Amount</label>
+                            <input type="number" class="form-control" id="base_amount" name="base_amount" step="0.01" min="0" required>
+                            <div class="form-text">Number of tokens awarded for this action</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="multiplier" class="form-label">Multiplier</label>
+                            <input type="number" class="form-control" id="multiplier" name="multiplier" step="0.1" min="0">
+                            <div class="form-text">Optional factor to multiply the base amount</div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="cooldown_type" class="form-label">Cooldown Type</label>
+                            <select class="form-select" id="cooldown_type" name="cooldown_type" onchange="toggleCooldownFields()">
+                                <option value="none">No Cooldown</option>
+                                <option value="hours">Hours</option>
+                                <option value="minutes">Minutes</option>
+                                <option value="one_time">One-time Only</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6" id="cooldown_value_div" style="display: none;">
+                            <label for="cooldown_value" class="form-label">Cooldown Value</label>
+                            <input type="number" class="form-control" id="cooldown_value" name="cooldown_value" min="1">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6" id="min_duration_div" style="display: none;">
+                            <label for="min_duration_seconds" class="form-label">Minimum Duration (seconds)</label>
+                            <input type="number" class="form-control" id="min_duration_seconds" name="min_duration_seconds" min="1">
+                            <div class="form-text">Minimum time required for the action (e.g., video watch duration)</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="is_active" class="form-label">Status</label>
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" id="is_active" name="is_active" checked>
+                                <label class="form-check-label" for="is_active">Active</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="2"></textarea>
+                        <div class="form-text">Optional description of this rule</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveRule()">Save Rule</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteRuleModal" tabindex="-1" aria-labelledby="deleteRuleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteRuleModalLabel">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this tokenization rule?</p>
+                <p class="text-danger">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete Rule</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Toggle custom action name field
+function toggleCustomActionField() {
+    const actionType = document.getElementById('action_type').value;
+    const customActionDiv = document.getElementById('custom_action_name_div');
+    
+    if (actionType === 'custom') {
+        customActionDiv.style.display = 'block';
+    } else {
+        customActionDiv.style.display = 'none';
+    }
+    
+    // Also toggle duration field for video_watch
+    const durationDiv = document.getElementById('min_duration_div');
+    if (actionType === 'video_watch') {
+        durationDiv.style.display = 'block';
+    } else {
+        durationDiv.style.display = 'none';
+    }
+}
+
+// Toggle cooldown fields based on cooldown type
+function toggleCooldownFields() {
+    const cooldownType = document.getElementById('cooldown_type').value;
+    const cooldownValueDiv = document.getElementById('cooldown_value_div');
+    
+    if (cooldownType === 'hours' || cooldownType === 'minutes') {
+        cooldownValueDiv.style.display = 'block';
+    } else {
+        cooldownValueDiv.style.display = 'none';
+    }
+}
+
+// Save tokenization rule
+function saveRule() {
+    // In a real implementation, this would save the rule to the database
+    // For now, we'll just show an alert and close the modal
+    alert('Rule saved successfully!');
+    
+    const modal = bootstrap.Modal.getInstance(document.getElementById('addRuleModal'));
+    modal.hide();
+    
+    // In a real implementation, we would reload the page or update the table
+    setTimeout(() => {
+        location.reload();
+    }, 500);
+}
+
+// Edit tokenization rule
+function editRule(ruleId) {
+    // In a real implementation, we would fetch the rule details from the server
+    // For now, simulate with dummy data
+    const dummyRule = {
+        id: ruleId,
+        action_type: 'login',
+        custom_action_name: '',
+        base_amount: 5,
+        cooldown_hours: 24,
+        cooldown_minutes: null,
+        one_time: false,
+        multiplier: null,
+        min_duration_seconds: null,
+        is_active: true,
+        description: 'Reward users for logging in daily'
+    };
+    
+    // Populate the form with the rule data
+    document.getElementById('rule_id').value = dummyRule.id;
+    document.getElementById('action_type').value = dummyRule.action_type;
+    document.getElementById('custom_action_name').value = dummyRule.custom_action_name || '';
+    document.getElementById('base_amount').value = dummyRule.base_amount;
+    document.getElementById('multiplier').value = dummyRule.multiplier || '';
+    
+    // Set cooldown type and value
+    let cooldownType = 'none';
+    let cooldownValue = '';
+    
+    if (dummyRule.one_time) {
+        cooldownType = 'one_time';
+    } else if (dummyRule.cooldown_hours) {
+        cooldownType = 'hours';
+        cooldownValue = dummyRule.cooldown_hours;
+    } else if (dummyRule.cooldown_minutes) {
+        cooldownType = 'minutes';
+        cooldownValue = dummyRule.cooldown_minutes;
+    }
+    
+    document.getElementById('cooldown_type').value = cooldownType;
+    document.getElementById('cooldown_value').value = cooldownValue;
+    document.getElementById('min_duration_seconds').value = dummyRule.min_duration_seconds || '';
+    document.getElementById('is_active').checked = dummyRule.is_active;
+    document.getElementById('description').value = dummyRule.description || '';
+    
+    // Update UI based on selected values
+    toggleCustomActionField();
+    toggleCooldownFields();
+    
+    // Update modal title
+    document.getElementById('addRuleModalLabel').textContent = 'Edit Tokenization Rule';
+    
+    // Show the modal
+    const modal = new bootstrap.Modal(document.getElementById('addRuleModal'));
+    modal.show();
+}
+
+// Delete tokenization rule
+function deleteRule(ruleId) {
+    // Set the rule ID to be deleted
+    document.getElementById('confirmDeleteBtn').onclick = function() {
+        // In a real implementation, we would send a request to delete the rule
+        alert('Rule deleted successfully!');
+        
+        const modal = bootstrap.Modal.getInstance(document.getElementById('deleteRuleModal'));
+        modal.hide();
+        
+        // In a real implementation, we would reload the page or update the table
+        setTimeout(() => {
+            location.reload();
+        }, 500);
+    };
+    
+    // Show the confirmation modal
+    const modal = new bootstrap.Modal(document.getElementById('deleteRuleModal'));
+    modal.show();
+}
+
+// Test tokenization
+function testTokenization() {
+    const actionType = document.getElementById('test_action_type').value;
+    const customAction = document.getElementById('test_custom_action').value;
+    let metadata;
+    
+    try {
+        const metadataText = document.getElementById('test_metadata').value;
+        metadata = metadataText ? JSON.parse(metadataText) : {};
+    } catch (e) {
+        alert('Invalid JSON in metadata field');
+        return;
+    }
+    
+    // In a real implementation, we would send a request to test the tokenization
+    // For now, simulate with dummy data
+    const result = {
+        success: true,
+        tokens_earned: 5,
+        rule_applied: {
+            action_type: actionType,
+            base_amount: 5,
+            multiplier: actionType === 'share' ? 2 : null
+        },
+        message: `User would earn ${actionType === 'share' ? '10' : '5'} tokens for this action`
+    };
+    
+    // Display the result
+    const resultContainer = document.getElementById('testResultContainer');
+    const resultOutput = document.getElementById('testResultOutput');
+    
+    resultOutput.innerHTML = `
+        <strong>Success!</strong><br>
+        Tokens earned: ${result.tokens_earned}<br>
+        Rule applied: ${result.rule_applied.action_type} (Base: ${result.rule_applied.base_amount})
+        ${result.rule_applied.multiplier ? ', Multiplier: ' + result.rule_applied.multiplier + 'x' : ''}
+    `;
+    
+    resultContainer.style.display = 'block';
+}
+
+// Event listeners for test form
+document.addEventListener('DOMContentLoaded', function() {
+    // Show/hide custom action field in test form
+    const testActionType = document.getElementById('test_action_type');
+    if (testActionType) {
+        testActionType.addEventListener('change', function() {
+            const customActionDiv = document.getElementById('custom_action_div');
+            if (this.value === 'custom') {
+                customActionDiv.style.display = 'block';
+            } else {
+                customActionDiv.style.display = 'none';
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

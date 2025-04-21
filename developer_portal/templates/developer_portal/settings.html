@@ -1,0 +1,554 @@
+{% extends 'developer_portal/base.html' %}
+
+{% block title %}Settings - Link3 Developer Portal{% endblock %}
+
+{% block page_title %}Project Settings{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-3 mb-4">
+        <div class="list-group">
+            <a href="#basic-settings" class="list-group-item list-group-item-action active" data-bs-toggle="list">
+                <i class="fas fa-cog me-2"></i> Basic Settings
+            </a>
+            <a href="#blockchain-settings" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                <i class="fas fa-link me-2"></i> Blockchain Settings
+            </a>
+            <a href="#token-settings" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                <i class="fas fa-coins me-2"></i> Token Settings
+            </a>
+            <a href="#webhook-settings" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                <i class="fas fa-bell me-2"></i> Webhooks
+            </a>
+            <a href="#api-usage" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                <i class="fas fa-chart-line me-2"></i> API Usage
+            </a>
+        </div>
+    </div>
+    <div class="col-md-9">
+        <div class="tab-content">
+            <!-- Basic Settings -->
+            <div class="tab-pane fade show active" id="basic-settings">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Basic Project Settings</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if selected_project %}
+                            <form method="post" action="{% url 'developer_portal:settings' %}">
+                                {% csrf_token %}
+                                
+                                <div class="mb-3">
+                                    <label for="project_name" class="form-label">Project Name</label>
+                                    <input type="text" class="form-control" id="project_name" name="name" value="{{ selected_project.name }}" required>
+                                    <div class="form-text">The name of your project as displayed on the platform</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="description" class="form-label">Description</label>
+                                    <textarea class="form-control" id="description" name="description" rows="3">{{ selected_project.description }}</textarea>
+                                    <div class="form-text">A brief description of your project</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="website" class="form-label">Website URL</label>
+                                    <input type="url" class="form-control" id="website" name="website" value="{{ selected_project.website }}">
+                                    <div class="form-text">Your project's website address</div>
+                                </div>
+                                
+                                <div class="form-check form-switch mb-3">
+                                    <input class="form-check-input" type="checkbox" id="is_active" name="is_active" {% if selected_project.is_active %}checked{% endif %}>
+                                    <label class="form-check-label" for="is_active">Project Active</label>
+                                    <div class="form-text">When inactive, your project cannot use the API</div>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary">Save Changes</button>
+                            </form>
+                        {% else %}
+                            <div class="alert alert-warning">
+                                <h4 class="alert-heading">No Project Selected</h4>
+                                <p>You need an active project to manage settings. Contact Link3 support to set up your project.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Blockchain Settings -->
+            <div class="tab-pane fade" id="blockchain-settings">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Blockchain Configuration</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if selected_project %}
+                            <form method="post" action="{% url 'developer_portal:settings' %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="form_type" value="blockchain">
+                                
+                                <div class="mb-3">
+                                    <label for="blockchain_network" class="form-label">Default Blockchain Network</label>
+                                    <select class="form-select" id="blockchain_network" name="blockchain_network">
+                                        {% for network in blockchain_networks %}
+                                            <option value="{{ network.name }}" {% if network.name == selected_project.blockchain_network %}selected{% endif %}>
+                                                {{ network.name }} ({% if network.is_testnet %}Testnet{% else %}Mainnet{% endif %})
+                                            </option>
+                                        {% empty %}
+                                            <option value="" disabled selected>No networks available</option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">The blockchain network on which your project's tokens will be deployed</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="owner_wallet_address" class="form-label">Owner Wallet Address</label>
+                                    <input type="text" class="form-control" id="owner_wallet_address" name="owner_wallet_address" value="{{ selected_project.owner_wallet_address }}">
+                                    <div class="form-text">The wallet address that will own the deployed token contract</div>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary">Save Blockchain Settings</button>
+                            </form>
+                            
+                            <hr>
+                            
+                            <h5 class="mt-4 mb-3">Network Status</h5>
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Network</th>
+                                            <th>Type</th>
+                                            <th>Status</th>
+                                            <th>Explorer</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for network in blockchain_networks %}
+                                            <tr>
+                                                <td>{{ network.name }}</td>
+                                                <td>{% if network.is_testnet %}Testnet{% else %}Mainnet{% endif %}</td>
+                                                <td>
+                                                    {% if network.is_active %}
+                                                        <span class="badge bg-success">Active</span>
+                                                    {% else %}
+                                                        <span class="badge bg-danger">Inactive</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if network.explorer_url %}
+                                                        <a href="{{ network.explorer_url }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                                            <i class="fas fa-external-link-alt me-1"></i> Explorer
+                                                        </a>
+                                                    {% else %}
+                                                        <span class="text-muted">N/A</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                        {% empty %}
+                                            <tr>
+                                                <td colspan="4" class="text-center">No networks available</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-warning">
+                                <h4 class="alert-heading">No Project Selected</h4>
+                                <p>You need an active project to manage blockchain settings.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Token Settings -->
+            <div class="tab-pane fade" id="token-settings">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Token Configuration</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if selected_project %}
+                            <form method="post" action="{% url 'developer_portal:token_settings' %}">
+                                {% csrf_token %}
+                                
+                                <div class="mb-3">
+                                    <label for="token_name" class="form-label">Token Name</label>
+                                    <input type="text" class="form-control" id="token_name" name="token_name" value="{{ selected_project.token_name }}" required>
+                                    <div class="form-text">The full name of your token (e.g., "Link3 Demo Token")</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="token_symbol" class="form-label">Token Symbol</label>
+                                    <input type="text" class="form-control" id="token_symbol" name="token_symbol" value="{{ selected_project.token_symbol }}" maxlength="10" required>
+                                    <div class="form-text">The symbol for your token (e.g., "LDT")</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="token_supply" class="form-label">Total Supply</label>
+                                    <input type="number" class="form-control" id="token_supply" name="token_supply" value="{{ selected_project.token_supply }}" required>
+                                    <div class="form-text">The maximum total supply of your token</div>
+                                </div>
+                                
+                                {% if selected_project.token_contract_address %}
+                                    <div class="alert alert-info">
+                                        <h5><i class="fas fa-info-circle me-2"></i> Token Deployed</h5>
+                                        <p>Your token has been deployed to the blockchain.</p>
+                                        <p><strong>Contract Address:</strong> 
+                                            <code>{{ selected_project.token_contract_address }}</code>
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard('{{ selected_project.token_contract_address }}')">
+                                                <i class="fas fa-copy"></i>
+                                            </button>
+                                        </p>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary" disabled>Token Settings Locked</button>
+                                    <div class="form-text mt-2">Token settings cannot be changed after deployment</div>
+                                {% else %}
+                                    <button type="submit" class="btn btn-primary">Save Token Settings</button>
+                                    <a href="#" class="btn btn-success ms-2" data-bs-toggle="modal" data-bs-target="#deployTokenModal">
+                                        <i class="fas fa-rocket me-2"></i> Deploy Token
+                                    </a>
+                                {% endif %}
+                            </form>
+                            
+                            <!-- Deploy Token Modal -->
+                            <div class="modal fade" id="deployTokenModal" tabindex="-1" aria-labelledby="deployTokenModalLabel" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="deployTokenModalLabel">Deploy Token</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="alert alert-warning">
+                                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                                <strong>Warning:</strong> Token deployment is irreversible. Once deployed, token settings cannot be changed.
+                                            </div>
+                                            
+                                            <p>You are about to deploy your token with the following settings:</p>
+                                            <ul>
+                                                <li><strong>Name:</strong> {{ selected_project.token_name }}</li>
+                                                <li><strong>Symbol:</strong> {{ selected_project.token_symbol }}</li>
+                                                <li><strong>Supply:</strong> {{ selected_project.token_supply }}</li>
+                                                <li><strong>Network:</strong> {{ selected_project.blockchain_network }}</li>
+                                            </ul>
+                                            
+                                            <p>Please confirm your wallet address for token ownership:</p>
+                                            <div class="mb-3">
+                                                <input type="text" class="form-control" id="confirm_wallet_address" value="{{ selected_project.owner_wallet_address }}" required>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                            <button type="button" class="btn btn-success" onclick="deployToken()">
+                                                <i class="fas fa-rocket me-2"></i> Deploy Now
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-warning">
+                                <h4 class="alert-heading">No Project Selected</h4>
+                                <p>You need an active project to manage token settings.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Webhook Settings -->
+            <div class="tab-pane fade" id="webhook-settings">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Webhook Configuration</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if selected_project %}
+                            <p class="lead">Configure webhooks to receive real-time updates about events in your Link3 project</p>
+                            
+                            <form>
+                                <div class="mb-3">
+                                    <label for="webhook_url" class="form-label">Webhook URL</label>
+                                    <input type="url" class="form-control" id="webhook_url" placeholder="https://your-app.com/webhooks/link3">
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Events to Subscribe</label>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="event_interaction" checked>
+                                        <label class="form-check-label" for="event_interaction">User Interactions</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="event_redemption" checked>
+                                        <label class="form-check-label" for="event_redemption">Token Redemptions</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="event_token" checked>
+                                        <label class="form-check-label" for="event_token">Token Transactions</label>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="webhook_secret" class="form-label">Webhook Secret</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="webhook_secret" value="whsec_6JMUhvlPlj9A8QTpJbFUZGABrmPONrva" readonly>
+                                        <button class="btn btn-outline-secondary" type="button" onclick="generateSecret()">
+                                            <i class="fas fa-sync-alt"></i>
+                                        </button>
+                                        <button class="btn btn-outline-secondary" type="button" onclick="copySecret()">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    </div>
+                                    <div class="form-text">Used to verify webhook requests from Link3</div>
+                                </div>
+                                
+                                <button type="button" class="btn btn-primary" onclick="saveWebhook()">Save Webhook Settings</button>
+                                <button type="button" class="btn btn-outline-secondary ms-2" onclick="testWebhook()">
+                                    <i class="fas fa-paper-plane me-2"></i> Send Test Event
+                                </button>
+                            </form>
+                            
+                            <hr>
+                            
+                            <h5 class="mt-4 mb-3">Webhook Logs</h5>
+                            <div class="table-responsive">
+                                <table class="table table-striped table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Time</th>
+                                            <th>Event Type</th>
+                                            <th>Status</th>
+                                            <th>Details</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>2025-04-21 10:15:32</td>
+                                            <td>interaction.created</td>
+                                            <td><span class="badge bg-success">200 OK</span></td>
+                                            <td><button class="btn btn-sm btn-outline-secondary">View</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>2025-04-21 10:12:05</td>
+                                            <td>redemption.pending</td>
+                                            <td><span class="badge bg-success">200 OK</span></td>
+                                            <td><button class="btn btn-sm btn-outline-secondary">View</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>2025-04-21 09:58:17</td>
+                                            <td>interaction.created</td>
+                                            <td><span class="badge bg-danger">Failed</span></td>
+                                            <td><button class="btn btn-sm btn-outline-secondary">View</button></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-warning">
+                                <h4 class="alert-heading">No Project Selected</h4>
+                                <p>You need an active project to configure webhooks.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- API Usage -->
+            <div class="tab-pane fade" id="api-usage">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">API Usage Statistics</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if selected_project %}
+                            <div class="alert alert-info">
+                                <h5 class="alert-heading">Your Current Plan: Standard</h5>
+                                <p class="mb-0">API Rate Limit: <strong>60</strong> requests per minute</p>
+                            </div>
+                            
+                            <div class="card mb-4">
+                                <div class="card-body">
+                                    <h5 class="card-title">Usage This Month</h5>
+                                    <div class="progress mb-3" style="height: 20px;">
+                                        <div class="progress-bar bg-success" role="progressbar" style="width: 35%;" aria-valuenow="35" aria-valuemin="0" aria-valuemax="100">35%</div>
+                                    </div>
+                                    <div class="d-flex justify-content-between">
+                                        <span>15,750 requests used</span>
+                                        <span>45,000 requests included</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <h5 class="mb-3">Daily API Requests (Last 7 Days)</h5>
+                            <div class="chart-container" style="height: 300px;">
+                                <canvas id="apiUsageChart"></canvas>
+                            </div>
+                            
+                            <h5 class="mt-4 mb-3">Top Endpoints</h5>
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Endpoint</th>
+                                            <th>Requests</th>
+                                            <th>Avg. Response Time</th>
+                                            <th>Error Rate</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><code>/api/interaction/</code></td>
+                                            <td>8,243</td>
+                                            <td>87ms</td>
+                                            <td>0.3%</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>/api/balance/</code></td>
+                                            <td>4,512</td>
+                                            <td>65ms</td>
+                                            <td>0.1%</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>/api/redeem/</code></td>
+                                            <td>1,782</td>
+                                            <td>124ms</td>
+                                            <td>1.2%</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code>/api/users/*/interactions/</code></td>
+                                            <td>1,213</td>
+                                            <td>112ms</td>
+                                            <td>0.4%</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div class="text-center mt-4">
+                                <a href="#" class="btn btn-outline-primary">
+                                    <i class="fas fa-arrow-up me-2"></i> Upgrade Plan
+                                </a>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-warning">
+                                <h4 class="alert-heading">No Project Selected</h4>
+                                <p>You need an active project to view API usage statistics.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+<script>
+// Copy text to clipboard
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        alert('Copied to clipboard!');
+    }, function(err) {
+        console.error('Could not copy text: ', err);
+    });
+}
+
+// Copy webhook secret
+function copySecret() {
+    const secretInput = document.getElementById('webhook_secret');
+    copyToClipboard(secretInput.value);
+}
+
+// Generate new webhook secret
+function generateSecret() {
+    // In a real implementation, this would call an API to generate a new secret
+    const newSecret = 'whsec_' + Math.random().toString(36).substring(2, 15);
+    document.getElementById('webhook_secret').value = newSecret;
+    alert('New webhook secret generated! Make sure to update your integrations.');
+}
+
+// Save webhook settings
+function saveWebhook() {
+    // In a real implementation, this would save the webhook configuration
+    alert('Webhook settings saved!');
+}
+
+// Test webhook
+function testWebhook() {
+    const webhookUrl = document.getElementById('webhook_url').value;
+    
+    if (!webhookUrl) {
+        alert('Please enter a webhook URL first');
+        return;
+    }
+    
+    // In a real implementation, this would send a test webhook event
+    alert('Test event sent to ' + webhookUrl);
+}
+
+// Deploy token
+function deployToken() {
+    // In a real implementation, this would initiate the token deployment process
+    alert('Token deployment initiated! This process may take a few minutes to complete.');
+    $('#deployTokenModal').modal('hide');
+}
+
+// Create API usage chart
+document.addEventListener('DOMContentLoaded', function() {
+    const apiUsageCanvas = document.getElementById('apiUsageChart');
+    
+    if (apiUsageCanvas) {
+        new Chart(apiUsageCanvas, {
+            type: 'bar',
+            data: {
+                labels: ['Apr 15', 'Apr 16', 'Apr 17', 'Apr 18', 'Apr 19', 'Apr 20', 'Apr 21'],
+                datasets: [{
+                    label: 'API Requests',
+                    data: [1250, 1540, 1340, 1850, 2100, 1920, 1650],
+                    backgroundColor: '#0d6efd',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Number of Requests'
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Enable Bootstrap tabs
+    const triggerTabList = [].slice.call(document.querySelectorAll('a[data-bs-toggle="list"]'));
+    triggerTabList.forEach(function (triggerEl) {
+        const tabTrigger = new bootstrap.Tab(triggerEl);
+        
+        triggerEl.addEventListener('click', function (event) {
+            event.preventDefault();
+            tabTrigger.show();
+        });
+    });
+    
+    // Handle hash changes for direct tab links
+    const hash = window.location.hash;
+    if (hash) {
+        const tab = document.querySelector(`a[href="${hash}"]`);
+        if (tab) {
+            bootstrap.Tab.getInstance(tab).show();
+        }
+    }
+});
+</script>
+{% endblock %}

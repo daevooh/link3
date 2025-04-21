@@ -1,0 +1,142 @@
+{% extends 'developer_portal/base.html' %}
+
+{% block title %}Token Settings - Link3 Developer Portal{% endblock %}
+
+{% block page_title %}Token Configuration{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="fas fa-coins me-2"></i> Token Configuration</h5>
+            </div>
+            <div class="card-body">
+                {% if selected_project %}
+                    <!-- Off-chain rewards status banner -->
+                    <div class="alert alert-success mb-4">
+                        <div class="d-flex">
+                            <div class="me-3">
+                                <i class="fas fa-check-circle fa-2x"></i>
+                            </div>
+                            <div>
+                                <h5 class="alert-heading">Off-Chain Rewards Active</h5>
+                                <p class="mb-0">Your project is already set up with off-chain rewards. Users can earn and redeem tokens within your application immediately.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="token_name" class="form-label">Token Name</label>
+                            <input type="text" class="form-control" id="token_name" name="token_name" value="{{ selected_project.token_name }}" required>
+                            <div class="form-text">The full name of your token (e.g., "Link3 Demo Token")</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="token_symbol" class="form-label">Token Symbol</label>
+                            <input type="text" class="form-control" id="token_symbol" name="token_symbol" value="{{ selected_project.token_symbol }}" maxlength="10" required>
+                            <div class="form-text">The symbol for your token (e.g., "LDT")</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="token_supply" class="form-label">Total Supply</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="token_supply" name="token_supply" value="{{ selected_project.token_supply }}" required>
+                                <span class="input-group-text">tokens</span>
+                            </div>
+                            <div class="form-text">The maximum total supply of your token</div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">Save Token Settings</button>
+                    </form>
+                {% else %}
+                    <div class="alert alert-warning">
+                        <h4 class="alert-heading">No Project Selected</h4>
+                        <p>You need an active project to manage token settings. Contact Link3 support to set up your project.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if selected_project %}
+        <div class="card mb-4">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-rocket me-2"></i> On-Chain Deployment (Optional)</h5>
+                <span class="badge bg-secondary">Coming Soon</span>
+            </div>
+            <div class="card-body">
+                <p>On-chain token deployment will be available in a future update. For now, your project is using off-chain rewards that work immediately with no blockchain integration required.</p>
+                
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Off-Chain Benefits:</strong> 
+                    <ul class="mb-0">
+                        <li>Zero gas fees and instant transactions</li>
+                        <li>Simplified integration with your application</li>
+                        <li>No blockchain wallet required for users</li>
+                        <li>Full analytics and reward tracking capabilities</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i> Token Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h6>What are Link3 tokens?</h6>
+                    <p>Link3 tokens are digital assets that you can use to reward users for engagement with your application.</p>
+                </div>
+                
+                <div class="mb-3">
+                    <h6>On-chain vs Off-chain</h6>
+                    <p>Your project is using off-chain tokens, which are tracked within the Link3 platform. These provide all the benefits of tokenization without blockchain complexity.</p>
+                </div>
+                
+                <div class="mb-3">
+                    <h6>Tokenomics Best Practices</h6>
+                    <ul>
+                        <li>Define clear token utility</li>
+                        <li>Balance token supply and demand</li>
+                        <li>Create transparent token earning rules</li>
+                        <li>Consider token vesting and lock-up periods</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        {% if selected_project %}
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i> Token Distribution</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="tokenDistributionChart" height="200"></canvas>
+                <div class="mt-3 small">
+                    <div class="d-flex justify-content-between">
+                        <span><i class="fas fa-square text-primary"></i> Available: 90%</span>
+                        <span>{{ selected_project.token_supply|floatformat:0|default:"900,000" }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span><i class="fas fa-square text-success"></i> Awarded: 5%</span>
+                        <span>50,000</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span><i class="fas fa-square text-secondary"></i> Reserve: 5%</span>
+                        <span>50,000</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
