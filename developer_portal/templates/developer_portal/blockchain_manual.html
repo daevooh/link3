@@ -1,0 +1,667 @@
+{% extends "developer_portal/base.html" %}
+
+{% block title %}Blockchain Manual - Link3 Developer Portal{% endblock %}
+
+{% block page_title %}Blockchain Integration Manual{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-3">
+        <!-- Table of Contents -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Contents</h5>
+            </div>
+            <div class="list-group list-group-flush">
+                <a href="#introduction" class="list-group-item list-group-item-action">Introduction</a>
+                <a href="#tokenization" class="list-group-item list-group-item-action">Tokenization Overview</a>
+                <a href="#token-creation" class="list-group-item list-group-item-action">Token Creation Process</a>
+                <a href="#tokenization-rules" class="list-group-item list-group-item-action">Configuring Tokenization Rules</a>
+                <a href="#token-settings" class="list-group-item list-group-item-action">Token Settings</a>
+                <a href="#integrations" class="list-group-item list-group-item-action">Blockchain Integrations</a>
+                <a href="#monitoring" class="list-group-item list-group-item-action">Monitoring & Analytics</a>
+                <a href="#faq" class="list-group-item list-group-item-action">FAQ</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-9">
+        <!-- Introduction Section -->
+        <section id="introduction" class="mb-5">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">Introduction to Blockchain Services</h3>
+                </div>
+                <div class="card-body">
+                    <p class="lead">Welcome to Link3's blockchain integration system!</p>
+                    
+                    <p>This manual will guide you through all features and functionalities of our blockchain services, helping you understand how to leverage blockchain technology for your projects.</p>
+                    
+                    <div class="alert alert-info">
+                        <strong>Important:</strong> Before using blockchain features, ensure you have:
+                        <ul>
+                            <li>Created a project in your dashboard</li>
+                            <li>Generated API keys for your project</li>
+                            <li>Familiarized yourself with our tokenization rules system</li>
+                        </ul>
+                    </div>
+                    
+                    <h5>Key Features:</h5>
+                    <ul>
+                        <li><strong>Token Creation:</strong> Deploy custom tokens on multiple blockchain networks</li>
+                        <li><strong>Tokenization Rules:</strong> Define how digital assets are converted to blockchain tokens</li>
+                        <li><strong>Token Management:</strong> Monitor and manage your deployed tokens</li>
+                        <li><strong>Analytics:</strong> Track token performance and user engagement</li>
+                    </ul>
+                    
+                    <p>To get started, navigate to the <a href="{% url 'developer_portal:token_requests' %}">Token Requests</a> section to create your first token, or continue reading this guide for in-depth information.</p>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Tokenization Overview -->
+        <section id="tokenization" class="mb-5">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">Tokenization Overview</h3>
+                </div>
+                <div class="card-body">
+                    <p>Tokenization is the process of converting rights to an asset into a digital token on a blockchain. Link3's platform provides a robust system for creating and managing these tokens.</p>
+                    
+                    <h5>Supported Blockchain Networks:</h5>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Network</th>
+                                    <th>Type</th>
+                                    <th>Token Standard</th>
+                                    <th>Gas Fees</th>
+                                    <th>Confirmation Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Ethereum Mainnet</td>
+                                    <td>Production</td>
+                                    <td>ERC-20, ERC-721</td>
+                                    <td>Variable (High)</td>
+                                    <td>~15 minutes</td>
+                                </tr>
+                                <tr>
+                                    <td>Polygon</td>
+                                    <td>Production</td>
+                                    <td>ERC-20, ERC-721</td>
+                                    <td>Low</td>
+                                    <td>~5 minutes</td>
+                                </tr>
+                                <tr>
+                                    <td>Ethereum Goerli</td>
+                                    <td>Testnet</td>
+                                    <td>ERC-20, ERC-721</td>
+                                    <td>Free (Test ETH)</td>
+                                    <td>~1 minute</td>
+                                </tr>
+                                <tr>
+                                    <td>Polygon Mumbai</td>
+                                    <td>Testnet</td>
+                                    <td>ERC-20, ERC-721</td>
+                                    <td>Free (Test MATIC)</td>
+                                    <td>~30 seconds</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="alert alert-info mt-3">
+                        <strong>Recommendation:</strong> For development and testing purposes, always use testnet networks first before deploying on production networks.
+                    </div>
+                    
+                    <h5>Tokenization Types:</h5>
+                    <ul>
+                        <li>
+                            <strong>Fungible Tokens (ERC-20):</strong> Suitable for creating currency-like tokens, reward points, or shares.
+                        </li>
+                        <li>
+                            <strong>Non-Fungible Tokens (ERC-721):</strong> Ideal for unique digital assets, certificates, or collectibles.
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Token Creation Process -->
+        <section id="token-creation" class="mb-5">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h3 class="mb-0">Token Creation Process</h3>
+                    <a href="{% url 'developer_portal:create_token_request' %}" class="btn btn-light">
+                        <i class="fas fa-plus-circle me-2"></i>Create Token Now
+                    </a>
+                </div>
+                <div class="card-body">
+                    <p>Creating a token involves several steps that ensure your digital assets are properly configured and secured on the blockchain.</p>
+                    
+                    <div class="alert alert-success mb-4">
+                        <strong><i class="fas fa-info-circle me-2"></i>Get Started:</strong> 
+                        Ready to create your first token? 
+                        <a href="{% url 'developer_portal:create_token_request' %}" class="alert-link">Click here to create a new token request</a> 
+                        or follow the step-by-step guide below.
+                    </div>
+                    
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title">Step-by-Step Guide:</h5>
+                            <ol>
+                                <li class="mb-3">
+                                    <strong>Navigate to Token Requests:</strong> Go to <a href="{% url 'developer_portal:token_requests' %}">Token Requests</a> in the developer portal.
+                                </li>
+                                <li class="mb-3">
+                                    <strong>Create New Token Request:</strong> Click the "Create New Token" button and fill in the token details:
+                                    <ul>
+                                        <li>Token Name (e.g., "MyProject Token")</li>
+                                        <li>Token Symbol (e.g., "MPT")</li>
+                                        <li>Token Type (Fungible or Non-Fungible)</li>
+                                        <li>Total Supply</li>
+                                        <li>Decimal Places (typically 18)</li>
+                                        <li>Target Blockchain Network</li>
+                                    </ul>
+                                </li>
+                                <li class="mb-3">
+                                    <strong>Configure Advanced Options:</strong>
+                                    <ul>
+                                        <li>Mintable (can create more tokens later)</li>
+                                        <li>Burnable (can destroy tokens)</li>
+                                        <li>Transfer Limits (optional restrictions)</li>
+                                        <li>Wallet Ownership Requirements</li>
+                                    </ul>
+                                </li>
+                                <li class="mb-3">
+                                    <strong>Review & Submit:</strong> Carefully review all token details before submitting your request.
+                                </li>
+                                <li class="mb-3">
+                                    <strong>Review Process:</strong> Our system will review your token request and provide updates on its status.
+                                </li>
+                                <li class="mb-3">
+                                    <strong>Deployment:</strong> Once approved, your token will be deployed to the blockchain (this process typically takes 1-2 business days).
+                                </li>
+                                <li>
+                                    <strong>Management:</strong> After deployment, you can manage your token through the Token Settings page.
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <strong>Important:</strong> Token deployment requires gas fees to be paid on the blockchain network. For testnets, we cover these fees. For production networks, you may need to provide the necessary funds.
+                    </div>
+                    
+                    <h5>Token Request Statuses:</h5>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Status</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="badge bg-secondary">Draft</span></td>
+                                    <td>Request saved but not submitted</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge bg-info">Pending</span></td>
+                                    <td>Request submitted and awaiting review</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge bg-warning">In Review</span></td>
+                                    <td>Request is being reviewed by our team</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge bg-primary">Approved</span></td>
+                                    <td>Request approved, awaiting deployment</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge bg-success">Deployed</span></td>
+                                    <td>Token successfully deployed on blockchain</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge bg-danger">Rejected</span></td>
+                                    <td>Request rejected (see comments for details)</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge bg-danger">Failed</span></td>
+                                    <td>Deployment failed (see technical details)</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Tokenization Rules -->
+        <section id="tokenization-rules" class="mb-5">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">Configuring Tokenization Rules</h3>
+                </div>
+                <div class="card-body">
+                    <p>Tokenization rules define how your digital assets are converted into blockchain tokens. These rules are essential for creating a fair and transparent tokenization system.</p>
+                    
+                    <h5>Key Concepts:</h5>
+                    <ul>
+                        <li><strong>Asset Types:</strong> Define what kinds of assets can be tokenized (e.g., content, engagement, referrals)</li>
+                        <li><strong>Conversion Rates:</strong> How much value each action or asset receives</li>
+                        <li><strong>Vesting Schedules:</strong> When tokens become available after earning</li>
+                        <li><strong>Distribution Rules:</strong> How tokens are distributed to different stakeholders</li>
+                    </ul>
+                    
+                    <div class="alert alert-info mb-4">
+                        <strong>Pro Tip:</strong> Start with simple tokenization rules and gradually increase complexity as you understand how your users interact with the system.
+                    </div>
+                    
+                    <h5>Creating Tokenization Rules:</h5>
+                    <ol>
+                        <li>Navigate to <a href="{% url 'developer_portal:tokenization_rules' %}">Tokenization Rules</a></li>
+                        <li>Click "Create New Rule"</li>
+                        <li>Select the rule type (Action-based, Content-based, etc.)</li>
+                        <li>Configure rule parameters and point values</li>
+                        <li>Set any conditions or limits</li>
+                        <li>Save and activate the rule</li>
+                    </ol>
+                    
+                    <h5>Example Rule Configurations:</h5>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Rule Type</th>
+                                    <th>Configuration Example</th>
+                                    <th>Token Value</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Content Creation</td>
+                                    <td>User publishes an article with minimum 500 words</td>
+                                    <td>10 tokens</td>
+                                </tr>
+                                <tr>
+                                    <td>Engagement</td>
+                                    <td>User receives 10 likes on content</td>
+                                    <td>5 tokens</td>
+                                </tr>
+                                <tr>
+                                    <td>Referral</td>
+                                    <td>User refers new signup who completes verification</td>
+                                    <td>25 tokens</td>
+                                </tr>
+                                <tr>
+                                    <td>Achievement</td>
+                                    <td>User completes profile and verification</td>
+                                    <td>15 tokens</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <a href="{% url 'developer_portal:tokenization_rules' %}" class="btn btn-primary">
+                            <i class="fas fa-cog me-2"></i>Configure Tokenization Rules
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Token Settings -->
+        <section id="token-settings" class="mb-5">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">Token Settings</h3>
+                </div>
+                <div class="card-body">
+                    <p>After your token is deployed, you can manage various settings to control its behavior and maintain your tokenized economy.</p>
+                    
+                    <h5>Available Settings:</h5>
+                    <ul>
+                        <li><strong>Token Distribution:</strong> Configure automatic distribution schedules and parameters</li>
+                        <li><strong>Transfer Restrictions:</strong> Set limits on transfers, if applicable</li>
+                        <li><strong>Minting Controls:</strong> Manage the creation of new tokens (if token is mintable)</li>
+                        <li><strong>Burning Controls:</strong> Configure token burning options (if token is burnable)</li>
+                        <li><strong>Wallet Integration:</strong> Connect with user wallets for token distribution</li>
+                    </ul>
+                    
+                    <div class="alert alert-warning mb-4">
+                        <strong>Note:</strong> Some settings require blockchain transactions to update token contracts and may incur gas fees.
+                    </div>
+                    
+                    <h5>Token Management Best Practices:</h5>
+                    <ol>
+                        <li>Regularly audit token distribution and circulation</li>
+                        <li>Set up automated monitoring for unusual token activity</li>
+                        <li>Create a transparent schedule for any planned token emissions</li>
+                        <li>Document all token settings changes for regulatory compliance</li>
+                        <li>Test significant changes on testnet before applying to production tokens</li>
+                    </ol>
+                    
+                    <div class="mt-4">
+                        <a href="{% url 'developer_portal:token_settings' %}" class="btn btn-primary">
+                            <i class="fas fa-sliders-h me-2"></i>Manage Token Settings
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Blockchain Integrations -->
+        <section id="integrations" class="mb-5">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">Blockchain Integrations</h3>
+                </div>
+                <div class="card-body">
+                    <p>Link3's blockchain services integrate with various wallets, DApps, and other blockchain platforms to provide a comprehensive ecosystem for your tokens.</p>
+                    
+                    <h5>Available Integrations:</h5>
+                    <div class="row row-cols-1 row-cols-md-3 g-4 mb-4">
+                        <div class="col">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title"><i class="fas fa-wallet me-2"></i>Wallet Connections</h5>
+                                    <p class="card-text">Allow users to connect external wallets like MetaMask, Trust Wallet, or WalletConnect to manage their tokens.</p>
+                                </div>
+                                <div class="card-footer">
+                                    <small class="text-muted">Supports EIP-1193 standard</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title"><i class="fas fa-exchange-alt me-2"></i>DEX Listings</h5>
+                                    <p class="card-text">List your tokens on decentralized exchanges for trading and liquidity provision.</p>
+                                </div>
+                                <div class="card-footer">
+                                    <small class="text-muted">Uniswap, SushiSwap, QuickSwap</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title"><i class="fas fa-chart-line me-2"></i>Price Oracles</h5>
+                                    <p class="card-text">Connect to blockchain oracles for reliable price data and external information.</p>
+                                </div>
+                                <div class="card-footer">
+                                    <small class="text-muted">Chainlink compatible</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h5>Integration Endpoints:</h5>
+                    <p>Use our API endpoints to integrate blockchain functionality into your applications:</p>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Endpoint</th>
+                                    <th>Description</th>
+                                    <th>Authentication</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>/api/v1/tokens/balances/</code></td>
+                                    <td>Get token balances for a user or wallet</td>
+                                    <td>API Key</td>
+                                </tr>
+                                <tr>
+                                    <td><code>/api/v1/tokens/transfer/</code></td>
+                                    <td>Initiate a token transfer between wallets</td>
+                                    <td>API Key + JWT</td>
+                                </tr>
+                                <tr>
+                                    <td><code>/api/v1/tokens/transactions/</code></td>
+                                    <td>Retrieve transaction history</td>
+                                    <td>API Key</td>
+                                </tr>
+                                <tr>
+                                    <td><code>/api/v1/tokens/mint/</code></td>
+                                    <td>Mint new tokens (if token is mintable)</td>
+                                    <td>API Key + Admin</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="alert alert-info mt-4">
+                        <strong>Documentation:</strong> For complete API documentation, visit the <a href="{% url 'developer_portal:documentation' %}">API Documentation</a> section.
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Monitoring & Analytics -->
+        <section id="monitoring" class="mb-5">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">Monitoring & Analytics</h3>
+                </div>
+                <div class="card-body">
+                    <p>Track the performance and usage of your blockchain tokens with our comprehensive analytics tools.</p>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Available Metrics:</h5>
+                            <ul>
+                                <li>Token Distribution & Circulation</li>
+                                <li>Transaction Volume & Frequency</li>
+                                <li>User Engagement with Tokens</li>
+                                <li>Token Economics Health Indicators</li>
+                                <li>Network Gas Fees & Costs</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Monitoring Features:</h5>
+                            <ul>
+                                <li>Real-time Transaction Alerts</li>
+                                <li>Anomaly Detection</li>
+                                <li>Custom Reporting & Dashboards</li>
+                                <li>Export Data for External Analysis</li>
+                                <li>Blockchain Explorer Integration</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-success mt-4">
+                        <strong>Pro Tip:</strong> Set up custom alerts for significant token movements or unusual activity to maintain security and oversight.
+                    </div>
+                    
+                    <div class="mt-4">
+                        <a href="{% url 'developer_portal:analytics' %}" class="btn btn-primary">
+                            <i class="fas fa-chart-line me-2"></i>View Analytics Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- FAQ Section -->
+        <section id="faq" class="mb-5">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">Frequently Asked Questions</h3>
+                </div>
+                <div class="card-body">
+                    <div class="accordion" id="blockchainFAQ">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingOne">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+                                    How long does token deployment take?
+                                </button>
+                            </h2>
+                            <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#blockchainFAQ">
+                                <div class="accordion-body">
+                                    Token deployment typically takes 1-2 business days after approval. Testnet deployments are usually faster (within 24 hours), while mainnet deployments may take longer due to security reviews and gas fee considerations.
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingTwo">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
+                                    Can I modify my token after deployment?
+                                </button>
+                            </h2>
+                            <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#blockchainFAQ">
+                                <div class="accordion-body">
+                                    Some token parameters can be modified after deployment if you've selected the "Upgradable" option during creation. However, core parameters like token name, symbol, and total supply are typically immutable once deployed to the blockchain.
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingThree">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
+                                    What are the costs associated with token creation?
+                                </button>
+                            </h2>
+                            <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#blockchainFAQ">
+                                <div class="accordion-body">
+                                    Token creation involves blockchain gas fees that vary by network. Ethereum mainnet has the highest fees, while Layer 2 solutions like Polygon are significantly cheaper. For testnets, we cover all gas fees. For production networks, you'll need to provide the necessary funds or use our managed deployment service.
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingFour">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour">
+                                    How do users receive my tokens?
+                                </button>
+                            </h2>
+                            <div id="collapseFour" class="accordion-collapse collapse" data-bs-parent="#blockchainFAQ">
+                                <div class="accordion-body">
+                                    Users can receive tokens through several methods:
+                                    <ul>
+                                        <li>Automatic distribution based on tokenization rules</li>
+                                        <li>Manual airdrops by project administrators</li>
+                                        <li>Direct transfers from other users</li>
+                                        <li>Purchases through integrated exchanges (if enabled)</li>
+                                    </ul>
+                                    Users must have a compatible wallet connected to their account to receive tokens.
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingFive">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFive">
+                                    What security measures protect my tokens?
+                                </button>
+                            </h2>
+                            <div id="collapseFive" class="accordion-collapse collapse" data-bs-parent="#blockchainFAQ">
+                                <div class="accordion-body">
+                                    We implement multiple security measures:
+                                    <ul>
+                                        <li>Smart contract audits for all token templates</li>
+                                        <li>Multi-signature requirements for admin functions</li>
+                                        <li>Rate limiting for token distribution</li>
+                                        <li>Anomaly detection for unusual transactions</li>
+                                        <li>Optional transaction approval workflows</li>
+                                    </ul>
+                                    Additionally, you can enable additional security features in token settings.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <p>Still have questions? Contact our support team:</p>
+                        <a href="mailto:blockchain-support@link3.com" class="btn btn-outline-primary">
+                            <i class="fas fa-envelope me-2"></i>Contact Blockchain Support
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Getting Help -->
+        <section class="mb-5">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">Need Additional Help?</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <h5 class="card-title"><i class="fas fa-book me-2"></i>Documentation</h5>
+                                    <p class="card-text">Browse our comprehensive API documentation for detailed integration guides.</p>
+                                    <a href="{% url 'developer_portal:documentation' %}" class="btn btn-primary">View Documentation</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    <h5 class="card-title"><i class="fas fa-life-ring me-2"></i>Technical Support</h5>
+                                    <p class="card-text">Get assistance from our blockchain specialists for complex issues.</p>
+                                    <a href="#" class="btn btn-primary">Open Support Ticket</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Smooth scrolling for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const targetId = this.getAttribute('href');
+            const targetElement = document.querySelector(targetId);
+            
+            if (targetElement) {
+                window.scrollTo({
+                    top: targetElement.offsetTop - 100,
+                    behavior: 'smooth'
+                });
+            }
+        });
+    });
+    
+    // Highlight current section in table of contents
+    window.addEventListener('scroll', function() {
+        const sections = document.querySelectorAll('section[id]');
+        let currentSectionId = '';
+        
+        sections.forEach(section => {
+            const sectionTop = section.offsetTop - 150;
+            const sectionHeight = section.offsetHeight;
+            if (window.scrollY >= sectionTop && window.scrollY < sectionTop + sectionHeight) {
+                currentSectionId = section.getAttribute('id');
+            }
+        });
+        
+        document.querySelectorAll('.list-group-item').forEach(item => {
+            item.classList.remove('active');
+            if (item.getAttribute('href') === '#' + currentSectionId) {
+                item.classList.add('active');
+            }
+        });
+    });
+</script>
+{% endblock %}

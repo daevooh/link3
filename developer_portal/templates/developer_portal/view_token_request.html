@@ -1,0 +1,359 @@
+{% extends "developer_portal/base.html" %}
+{% load static %}
+
+{% block title %}Token Request Details - Developer Portal{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'developer_portal:token_requests' %}">Token Requests</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Request #{{ token_request.id }}</li>
+                </ol>
+            </nav>
+            
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2>Token Request Details</h2>
+                <div>
+                    <a href="{% url 'developer_portal:edit_token_request' token_request.id %}" class="btn btn-outline-primary me-2">
+                        <i class="fas fa-edit me-2"></i>Edit Request
+                    </a>
+                    <a href="#" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#cancelRequestModal">
+                        <i class="fas fa-times-circle me-2"></i>Cancel Request
+                    </a>
+                </div>
+            </div>
+            
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Request Information</h5>
+                    <span class="badge {% if token_request.status == 'pending' %}bg-warning{% elif token_request.status == 'approved' %}bg-success{% elif token_request.status == 'rejected' %}bg-danger{% else %}bg-secondary{% endif %} text-white">
+                        {{ token_request.get_status_display }}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Basic Information</h5>
+                            <table class="table">
+                                <tbody>
+                                    <tr>
+                                        <th scope="row" style="width: 40%;">Request ID</th>
+                                        <td>{{ token_request.id }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Created By</th>
+                                        <td>{{ token_request.user.email }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Submission Date</th>
+                                        <td>{{ token_request.created_at|date:"F j, Y, g:i a" }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Last Updated</th>
+                                        <td>{{ token_request.updated_at|date:"F j, Y, g:i a" }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Token Details</h5>
+                            <table class="table">
+                                <tbody>
+                                    <tr>
+                                        <th scope="row" style="width: 40%;">Token Name</th>
+                                        <td>{{ token_request.token_name }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Token Symbol</th>
+                                        <td>{{ token_request.token_symbol }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Token Type</th>
+                                        <td>{{ token_request.get_token_type_display }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Network</th>
+                                        <td>{{ token_request.get_network_display }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <h5>Supply Information</h5>
+                            <table class="table">
+                                <tbody>
+                                    <tr>
+                                        <th scope="row" style="width: 40%;">Total Supply</th>
+                                        <td>{{ token_request.total_supply|floatformat:0 }}</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Decimals</th>
+                                        <td>{{ token_request.decimals }}</td>
+                                    </tr>
+                                    {% if token_request.token_type == 'erc20' or token_request.token_type == 'erc1155' %}
+                                    <tr>
+                                        <th scope="row">Mintable</th>
+                                        <td>{% if token_request.mintable %}Yes{% else %}No{% endif %}</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Burnable</th>
+                                        <td>{% if token_request.burnable %}Yes{% else %}No{% endif %}</td>
+                                    </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Advanced Settings</h5>
+                            <table class="table">
+                                <tbody>
+                                    <tr>
+                                        <th scope="row" style="width: 40%;">Admin Address</th>
+                                        <td>{{ token_request.admin_address }}</td>
+                                    </tr>
+                                    {% if token_request.token_type == 'erc20' %}
+                                    <tr>
+                                        <th scope="row">Pausable</th>
+                                        <td>{% if token_request.pausable %}Yes{% else %}No{% endif %}</td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Transferable</th>
+                                        <td>{% if token_request.transferable %}Yes{% else %}No{% endif %}</td>
+                                    </tr>
+                                    {% endif %}
+                                    <tr>
+                                        <th scope="row">Upgradeable</th>
+                                        <td>{% if token_request.upgradeable %}Yes{% else %}No{% endif %}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <h5>Additional Information</h5>
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    {{ token_request.description|linebreaks }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            {% if token_request.status == 'approved' and token_request.contract_address %}
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Deployed Contract Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <table class="table">
+                                <tbody>
+                                    <tr>
+                                        <th scope="row" style="width: 40%;">Contract Address</th>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <code class="me-2">{{ token_request.contract_address }}</code>
+                                                <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard('{{ token_request.contract_address }}')">
+                                                    <i class="fas fa-copy"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Deploy Transaction</th>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <code class="me-2">{{ token_request.transaction_hash }}</code>
+                                                <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard('{{ token_request.transaction_hash }}')">
+                                                    <i class="fas fa-copy"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Explorer Link</th>
+                                        <td>
+                                            <a href="{{ token_request.get_explorer_url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-external-link-alt me-1"></i> View on Block Explorer
+                                            </a>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="alert alert-success">
+                                <h5><i class="fas fa-check-circle me-2"></i>Token Successfully Deployed</h5>
+                                <p class="mb-0">Your token has been successfully deployed to the {{ token_request.get_network_display }} network. You can now integrate it into your application.</p>
+                            </div>
+                            <div class="d-grid gap-2">
+                                <a href="{% url 'developer_portal:api_docs' %}#token-integration" class="btn btn-outline-primary">
+                                    <i class="fas fa-code me-2"></i>View Integration Documentation
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if token_request.status == 'pending' or token_request.status == 'in_review' %}
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Review Status</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="flex-shrink-0 me-3">
+                            <div class="spinner-grow text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h5 class="mb-1">Your request is being processed</h5>
+                            <p class="text-muted mb-0">Our team is reviewing your token request. This typically takes 1-3 business days.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="progress mb-3" style="height: 20px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" 
+                             style="width: {% if token_request.status == 'in_review' %}50%{% else %}25%{% endif %};" 
+                             aria-valuenow="{% if token_request.status == 'in_review' %}50{% else %}25{% endif %}" 
+                             aria-valuemin="0" aria-valuemax="100">
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between text-muted small">
+                        <span>Submitted</span>
+                        <span>In Review</span>
+                        <span>Deployment</span>
+                        <span>Complete</span>
+                    </div>
+                    
+                    <hr>
+                    
+                    <h6>What happens next?</h6>
+                    <p>You'll receive an email notification when your token request is approved or if additional information is required. You can also check this page for status updates.</p>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if token_request.status == 'rejected' %}
+            <div class="card shadow-sm mb-4 border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">Request Rejected</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger">
+                        <h5><i class="fas fa-exclamation-circle me-2"></i>Your token request has been rejected</h5>
+                        <p>{{ token_request.rejection_reason }}</p>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <h6>What can I do now?</h6>
+                        <p>You can edit your request to address the issues and resubmit it for review, or contact our support team if you have any questions.</p>
+                        
+                        <div class="d-flex">
+                            <a href="{% url 'developer_portal:edit_token_request' token_request.id %}" class="btn btn-primary me-2">
+                                <i class="fas fa-edit me-2"></i>Edit & Resubmit
+                            </a>
+                            <a href="{% url 'developer_portal:support' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-headset me-2"></i>Contact Support
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Request History</h5>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        {% for event in token_request.get_history %}
+                        <div class="timeline-item">
+                            <div class="timeline-marker {% if event.status == 'approved' %}bg-success{% elif event.status == 'rejected' %}bg-danger{% else %}bg-primary{% endif %}"></div>
+                            <div class="timeline-content">
+                                <h6 class="mb-1">{{ event.get_status_display }}</h6>
+                                <p class="text-muted mb-0">{{ event.timestamp|date:"F j, Y, g:i a" }}</p>
+                                {% if event.notes %}
+                                <p class="mt-2">{{ event.notes }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% empty %}
+                        <p class="text-muted">No history available yet.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cancel Request Modal -->
+<div class="modal fade" id="cancelRequestModal" tabindex="-1" aria-labelledby="cancelRequestModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cancelRequestModalLabel">Cancel Token Request</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-danger"><i class="fas fa-exclamation-triangle me-2"></i>Are you sure you want to cancel this token request?</p>
+                <p>This action cannot be undone. If you need to create a token later, you will need to submit a new request.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <form method="post" action="{% url 'developer_portal:cancel_token_request' token_request.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Yes, Cancel Request</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(function() {
+            // Show a temporary notification
+            const notification = document.createElement('div');
+            notification.className = 'position-fixed bottom-0 end-0 p-3';
+            notification.style.zIndex = '5';
+            notification.innerHTML = `
+                <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="toast-header">
+                        <i class="fas fa-check-circle text-success me-2"></i>
+                        <strong class="me-auto">Success</strong>
+                        <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                    <div class="toast-body">
+                        Copied to clipboard!
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(notification);
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        });
+    }
+</script>
+{% endblock %}
+
+{% endblock %}

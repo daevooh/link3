@@ -1,0 +1,189 @@
+{% extends "developer_portal/base.html" %}
+{% load static %}
+
+{% block title %}Token Documentation - Developer Portal{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2>Token Documentation</h2>
+                <a href="{% url 'developer_portal:create_token_request' %}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Create New Token
+                </a>
+            </div>
+            
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Understanding Tokens on Link3</h5>
+                </div>
+                <div class="card-body">
+                    <h5>What are tokens?</h5>
+                    <p>
+                        Tokens are digital assets that represent value, access rights, or ownership on a blockchain network.
+                        With Link3, you can create and manage tokens for various use cases including:
+                    </p>
+                    <ul>
+                        <li>Utility tokens for your application's ecosystem</li>
+                        <li>Reward tokens for incentivizing user behaviors</li>
+                        <li>Access tokens for premium features</li>
+                        <li>Governance tokens for community decision making</li>
+                    </ul>
+                    
+                    <hr class="my-4">
+                    
+                    <h5>Token Standards</h5>
+                    <p>We currently support the following token standards:</p>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Standard</th>
+                                    <th>Description</th>
+                                    <th>Networks</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>ERC-20</td>
+                                    <td>Standard fungible token for Ethereum and compatible networks</td>
+                                    <td>Ethereum, Polygon, Binance Smart Chain, Arbitrum, Optimism</td>
+                                </tr>
+                                <tr>
+                                    <td>ERC-721</td>
+                                    <td>Non-fungible token (NFT) standard</td>
+                                    <td>Ethereum, Polygon, Binance Smart Chain</td>
+                                </tr>
+                                <tr>
+                                    <td>ERC-1155</td>
+                                    <td>Multi-token standard supporting both fungible and non-fungible tokens</td>
+                                    <td>Ethereum, Polygon</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Token Creation Process</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Step 1: Request Creation</h5>
+                            <p>Submit a token creation request with the following information:</p>
+                            <ul>
+                                <li>Token name and symbol</li>
+                                <li>Total supply</li>
+                                <li>Blockchain network</li>
+                                <li>Admin address (for token management)</li>
+                                <li>Token features (optional)</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Step 2: Review &amp; Approval</h5>
+                            <p>Our team reviews your request to ensure:</p>
+                            <ul>
+                                <li>Compliance with regulations</li>
+                                <li>Adherence to network standards</li>
+                                <li>Security best practices</li>
+                                <li>Valid configuration parameters</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <h5>Step 3: Deployment</h5>
+                            <p>Upon approval, we:</p>
+                            <ul>
+                                <li>Deploy your token contract to the selected network</li>
+                                <li>Initialize with your provided parameters</li>
+                                <li>Perform security verification</li>
+                                <li>Transfer ownership to your admin address</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Step 4: Integration</h5>
+                            <p>After deployment:</p>
+                            <ul>
+                                <li>Access your token via the contract address</li>
+                                <li>Integrate with your application using our SDK</li>
+                                <li>Monitor token activities via our dashboard</li>
+                                <li>Access token functions through our API</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Frequently Asked Questions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="accordion" id="tokenFAQ">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingOne">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+                                    How much does it cost to create a token?
+                                </button>
+                            </h2>
+                            <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne" data-bs-parent="#tokenFAQ">
+                                <div class="accordion-body">
+                                    <p>Token creation costs vary by network:</p>
+                                    <ul>
+                                        <li>Testnet deployments: Free</li>
+                                        <li>Mainnet deployments: Network gas fees + service fee (see pricing page)</li>
+                                    </ul>
+                                    <p>For enterprise customers, custom pricing plans are available.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingTwo">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                                    Can I modify my token after deployment?
+                                </button>
+                            </h2>
+                            <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#tokenFAQ">
+                                <div class="accordion-body">
+                                    <p>Certain token parameters are immutable after deployment, including:</p>
+                                    <ul>
+                                        <li>Token name and symbol</li>
+                                        <li>Decimals</li>
+                                        <li>Total supply (unless mintable feature is enabled)</li>
+                                    </ul>
+                                    <p>If you require upgradeable tokens, select the "upgradeable" option during token creation.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingThree">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                                    How long does the token creation process take?
+                                </button>
+                            </h2>
+                            <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#tokenFAQ">
+                                <div class="accordion-body">
+                                    <ul>
+                                        <li>Testnet deployments: Usually within 24 hours</li>
+                                        <li>Mainnet deployments: 2-5 business days (includes security review)</li>
+                                    </ul>
+                                    <p>Premium customers receive expedited processing.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -68,7 +68,7 @@ def dashboard(request):
         'selected_project': selected_project,
     }
     
-    if selected_project:
+    if (selected_project):
         # Get project stats
         user_count = AppUser.objects.filter(project=selected_project).count()
         interaction_count = Interaction.objects.filter(user__project=selected_project).count()
@@ -552,3 +552,114 @@ def token_requests(request):
         'deployed_tokens': deployed_tokens,
     }
     return render(request, 'developer_portal/token_requests.html', context)
+
+@login_required
+@verified_developer_required
+def view_token_request(request, request_id):
+    """View details of a specific token creation request"""
+    token_request = get_object_or_404(
+        TokenCreationRequest, 
+        id=request_id,
+        project__developer=request.user
+    )
+    
+    context = {
+        'token_request': token_request,
+        'projects': Project.objects.filter(developer=request.user, is_active=True),
+        'selected_project': token_request.project,
+        'blockchain_networks': BlockchainNetwork.objects.filter(is_active=True),
+    }
+    return render(request, 'developer_portal/view_token_request.html', context)
+
+@login_required
+@verified_developer_required
+def edit_token_request(request, request_id):
+    """Edit a pending token creation request"""
+    token_request = get_object_or_404(
+        TokenCreationRequest, 
+        id=request_id,
+        project__developer=request.user,
+        status='pending'  # Only allow editing pending requests
+    )
+    
+    if request.method == 'POST':
+        # Extract form data
+        name = request.POST.get('token_name')
+        symbol = request.POST.get('token_symbol')
+        total_supply = request.POST.get('total_supply')
+        network_id = request.POST.get('network')
+        admin_address = request.POST.get('admin_address')
+        decimals = request.POST.get('decimals', 18)
+        
+        # Validate form data
+        if not all([name, symbol, total_supply, network_id, admin_address]):
+            messages.error(request, "All fields are required.")
+        else:
+            try:
+                # Convert to appropriate types
+                total_supply = int(total_supply)
+                decimals = int(decimals)
+                network = BlockchainNetwork.objects.get(id=network_id)
+                
+                # Update token request
+                token_request.name = name
+                token_request.symbol = symbol
+                token_request.total_supply = total_supply
+                token_request.network = network
+                token_request.admin_address = admin_address
+                token_request.decimals = decimals
+                token_request.last_updated = timezone.now()
+                token_request.save()
+                
+                messages.success(request, "Token request updated successfully!")
+                return redirect('developer_portal:token_requests')
+            except BlockchainNetwork.DoesNotExist:
+                messages.error(request, "Selected blockchain network is not valid.")
+            except ValueError:
+                messages.error(request, "Invalid numeric values for total supply or decimals.")
+            except Exception as e:
+                messages.error(request, f"Error updating token request: {str(e)}")
+    
+    context = {
+        'token_request': token_request,
+        'projects': Project.objects.filter(developer=request.user, is_active=True),
+        'selected_project': token_request.project,
+        'blockchain_networks': BlockchainNetwork.objects.filter(is_active=True),
+    }
+    return render(request, 'developer_portal/edit_token_request.html', context)
+
+@login_required
+@verified_developer_required
+def token_documentation(request):
+    """Documentation about token creation and usage"""
+    context = {
+        'projects': Project.objects.filter(developer=request.user, is_active=True),
+        'selected_project': Project.objects.filter(developer=request.user, is_active=True).first(),
+    }
+    return render(request, 'developer_portal/token_documentation.html', context)
+
+@login_required
+@verified_developer_required
+def cancel_token_request(request, request_id):
+    """Cancel a token creation request"""
+    token_request = get_object_or_404(TokenCreationRequest, id=request_id, user=request.user)
+    
+    # Only allow cancellation if the request is in pending or in_review status
+    if token_request.status not in ['pending', 'in_review']:
+        messages.error(request, "This request cannot be cancelled because it's already been processed.")
+        return redirect('developer_portal:view_token_request', request_id=request_id)
+    
+    if request.method == 'POST':
+        # Update the token request status to cancelled
+        token_request.status = 'cancelled'
+        token_request.updated_at = timezone.now()
+        token_request.save()
+        
+        # Add an entry to the token request history if you have such functionality
+        # This would depend on how your history tracking is implemented
+        
+        messages.success(request, "Your token request has been successfully cancelled.")
+        return redirect('developer_portal:token_requests')
+    
+    # If not POST, redirect back to the view page
+    return redirect('developer_portal:view_token_request', request_id=request_id)
