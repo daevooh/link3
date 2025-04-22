@@ -14,4 +14,6 @@ urlpatterns = [
     path('settings/', views.settings, name='settings'),
     path('token-settings/', views.token_settings, name='token_settings'),
     path('tokenization-rules/', views.tokenization_rules, name='tokenization_rules'),
+    path('tokens/request/', views.create_token_request, name='create_token_request'),
+    path('tokens/requests/', views.token_requests, name='token_requests'),
 ]

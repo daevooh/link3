@@ -20,7 +20,9 @@ from .views_blockchain import (
 from .views_tokenization import (
     TokenizationRuleViewSet,
     ActionTypeListView,
-    TokenizationStatsView
+    TokenizationStatsView,
+    TokenCreationRequestView,
+    token_request_stats
 )
 
 # Create API documentation schema view
@@ -95,4 +97,8 @@ urlpatterns = [
     path('tokenization/', include(tokenization_router.urls)),
     path('tokenization/action-types/', ActionTypeListView.as_view(), name='action-types'),
     path('tokenization/stats/', TokenizationStatsView.as_view(), name='tokenization-stats'),
+    
+    # Token creation request management endpoints
+    path('token-requests/', TokenCreationRequestView.as_view(), name='token-requests'),
+    path('token-requests/stats/', token_request_stats, name='token-request-stats'),
 ]

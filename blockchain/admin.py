@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import BlockchainNetwork, ProjectToken, TokenTransaction, TokenRedemption, UserWallet
+from .models import BlockchainNetwork, ProjectToken, TokenTransaction, TokenRedemption, UserWallet, TokenCreationRequest
 
 @admin.register(BlockchainNetwork)
 class BlockchainNetworkAdmin(admin.ModelAdmin):
@@ -155,3 +155,49 @@ class UserWalletAdmin(admin.ModelAdmin):
                              obj.network.explorer_url, obj.address, obj.address[:10], obj.address[-6:])
         return f"{obj.address[:10]}...{obj.address[-6:]}"
     address_display.short_description = 'Address'
+
+@admin.register(TokenCreationRequest)
+class TokenCreationRequestAdmin(admin.ModelAdmin):
+    list_display = ('symbol', 'name', 'project', 'network', 'status', 'submitted_at', 'approved_by', 'rejected_by')
+    list_filter = ('status', 'network', 'submitted_at')
+    search_fields = ('symbol', 'name', 'project__name')
+    readonly_fields = ('id', 'submitted_at', 'updated_at', 'approved_at', 'rejected_at', 'deployed_token')
+    fieldsets = (
+        ('Token Details', {
+            'fields': ('project', 'name', 'symbol', 'total_supply', 'network', 'admin_address', 'decimals')
+        }),
+        ('Status Information', {
+            'fields': ('status', 'submitted_at', 'updated_at')
+        }),
+        ('Review Information', {
+            'fields': ('approved_by', 'approved_at', 'rejected_by', 'rejected_at', 'review_notes', 'deployed_token')
+        }),
+    )
+    
+    actions = ['approve_requests', 'reject_requests']
+    
+    def approve_requests(self, request, queryset):
+        from .services import TokenService
+        
+        admin_user = request.user.appuser
+        count = 0
+        for token_request in queryset.filter(status='pending'):
+            result = TokenService.approve_token_request(token_request.id, admin_user)
+            if result['success']:
+                count += 1
+        
+        self.message_user(request, f"Successfully approved {count} token requests.")
+    approve_requests.short_description = "Approve selected requests"
+    
+    def reject_requests(self, request, queryset):
+        from .services import TokenService
+        
+        admin_user = request.user.appuser
+        count = 0
+        for token_request in queryset.filter(status='pending'):
+            result = TokenService.reject_token_request(token_request.id, admin_user)
+            if result['success']:
+                count += 1
+        
+        self.message_user(request, f"Successfully rejected {count} token requests.")
+    reject_requests.short_description = "Reject selected requests"

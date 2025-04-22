@@ -3,6 +3,11 @@ import uuid
 from django.utils import timezone
 from users.models import AppUser, Project
 from decimal import Decimal
+import logging
+from django.utils.translation import gettext_lazy as _
+from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 class TokenRedemption(models.Model):
     """
@@ -178,3 +183,83 @@ class TokenTransaction(models.Model):
         """Mark transaction as failed"""
         self.status = 'FAILED'
         self.save(update_fields=['status', 'updated_at'])
+
+class TokenCreationRequest(models.Model):
+    """
+    Model for token creation requests that require admin approval
+    """
+    STATUS_CHOICES = [
+        ('pending', _('Pending Approval')),
+        ('approved', _('Approved')),
+        ('rejected', _('Rejected')),
+        ('deployed', _('Deployed')),
+        ('canceled', _('Canceled'))
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey('users.Project', on_delete=models.CASCADE, related_name='token_requests')
+    name = models.CharField(max_length=100)
+    symbol = models.CharField(max_length=10)
+    total_supply = models.DecimalField(max_digits=78, decimal_places=0)
+    network = models.ForeignKey('blockchain.BlockchainNetwork', on_delete=models.CASCADE, related_name='token_requests')
+    admin_address = models.CharField(max_length=255)
+    decimals = models.PositiveIntegerField(default=18)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    # Approval details
+    approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_tokens')
+    approved_at = models.DateTimeField(null=True, blank=True)
+    rejected_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='rejected_tokens')
+    rejected_at = models.DateTimeField(null=True, blank=True)
+    review_notes = models.TextField(null=True, blank=True)
+    
+    # Link to deployed token (if approved and deployed)
+    deployed_token = models.OneToOneField('blockchain.ProjectToken', on_delete=models.SET_NULL, null=True, blank=True, related_name='creation_request')
+    
+    class Meta:
+        verbose_name = _("Token Creation Request")
+        verbose_name_plural = _("Token Creation Requests")
+        ordering = ['-submitted_at']
+    
+    def __str__(self):
+        return f"{self.symbol} - {self.get_status_display()}"
+    
+    def approve(self, reviewer, notes=None):
+        """Approve the token request"""
+        if self.status != 'pending':
+            raise ValueError(f"Cannot approve request with status {self.get_status_display()}")
+            
+        self.status = 'approved'
+        self.approved_by = reviewer
+        self.approved_at = timezone.now()
+        if notes:
+            self.review_notes = notes
+        self.save(update_fields=['status', 'approved_by', 'approved_at', 'review_notes', 'updated_at'])
+        logger.info(f"Token request {self.symbol} approved by {reviewer}")
+        return True
+        
+    def reject(self, reviewer, notes=None):
+        """Reject the token request"""
+        if self.status != 'pending':
+            raise ValueError(f"Cannot reject request with status {self.get_status_display()}")
+            
+        self.status = 'rejected'
+        self.rejected_by = reviewer
+        self.rejected_at = timezone.now()
+        if notes:
+            self.review_notes = notes
+        self.save(update_fields=['status', 'rejected_by', 'rejected_at', 'review_notes', 'updated_at'])
+        logger.info(f"Token request {self.symbol} rejected by {reviewer}")
+        return True
+        
+    def cancel(self):
+        """Cancel the token request"""
+        if self.status not in ['pending', 'approved']:
+            raise ValueError(f"Cannot cancel request with status {self.get_status_display()}")
+            
+        self.status = 'canceled'
+        self.save(update_fields=['status', 'updated_at'])
+        logger.info(f"Token request {self.symbol} canceled")
+        return True

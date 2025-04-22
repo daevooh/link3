@@ -1,0 +1,235 @@
+{% extends "developer_portal/base.html" %}
+
+{% block title %}Request Token Creation - Link3 Developer Portal{% endblock %}
+
+{% block page_title %}Request Token Creation{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Token Creation Request Form</h5>
+            </div>
+            <div class="card-body">
+                <p class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> Your token creation request will be reviewed by our team. You'll be notified when your token is approved and deployed.
+                </p>
+
+                <form method="post" id="tokenCreationForm">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="project" class="form-label">Project</label>
+                        <select class="form-select" id="project" name="project" required>
+                            <option value="" selected disabled>Select your project</option>
+                            {% for project in projects %}
+                                <option value="{{ project.id }}">{{ project.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">Select the project this token will be associated with</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Token Name</label>
+                        <input type="text" class="form-control" id="name" name="name" required maxlength="100"
+                               placeholder="e.g., Link3 Demo Token">
+                        <div class="form-text">The full name of your token (max 100 characters)</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="symbol" class="form-label">Token Symbol</label>
+                        <input type="text" class="form-control" id="symbol" name="symbol" required maxlength="10"
+                               placeholder="e.g., LDT" style="text-transform: uppercase;">
+                        <div class="form-text">Short abbreviation for your token (max 10 characters)</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="total_supply" class="form-label">Total Supply</label>
+                        <input type="number" class="form-control" id="total_supply" name="total_supply" required
+                               placeholder="e.g., 1000000">
+                        <div class="form-text">The total number of tokens that will be created</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="network" class="form-label">Blockchain Network</label>
+                        <select class="form-select" id="network" name="network" required>
+                            <option value="" selected disabled>Select a blockchain network</option>
+                            {% for network in networks %}
+                                <option value="{{ network.id }}">{{ network.name }} ({% if network.is_testnet %}Testnet{% else %}Mainnet{% endif %})</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">Select the blockchain network for your token</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="admin_address" class="form-label">Admin Wallet Address</label>
+                        <input type="text" class="form-control" id="admin_address" name="admin_address" required
+                               placeholder="e.g., 0x123...">
+                        <div class="form-text">Your wallet address that will have admin privileges for this token</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="decimals" class="form-label">Token Decimals</label>
+                        <input type="number" class="form-control" id="decimals" name="decimals" value="18" min="0" max="18">
+                        <div class="form-text">Number of decimal places for your token (default is 18)</div>
+                    </div>
+
+                    <div class="d-flex justify-content-end">
+                        <a href="{% url 'developer_portal:dashboard' %}" class="btn btn-secondary me-2">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Submit Request</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Token Creation Guide</h5>
+            </div>
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2">Tips for creating your token:</h6>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item">
+                        <i class="fas fa-check-circle text-success me-2"></i>
+                        <strong>Token Name:</strong> Choose a clear, descriptive name
+                    </li>
+                    <li class="list-group-item">
+                        <i class="fas fa-check-circle text-success me-2"></i>
+                        <strong>Token Symbol:</strong> Usually 3-4 characters, all caps
+                    </li>
+                    <li class="list-group-item">
+                        <i class="fas fa-check-circle text-success me-2"></i>
+                        <strong>Total Supply:</strong> Consider your tokenomics carefully
+                    </li>
+                    <li class="list-group-item">
+                        <i class="fas fa-check-circle text-success me-2"></i>
+                        <strong>Admin Address:</strong> Must be a valid blockchain address you control
+                    </li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="card shadow">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">Request Status</h5>
+            </div>
+            <div class="card-body">
+                <h6>Previous Requests</h6>
+                {% if token_requests %}
+                <div class="list-group">
+                    {% for request in token_requests %}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">{{ request.symbol }}</h6>
+                            <small>
+                                {% if request.status == 'pending' %}
+                                <span class="badge bg-warning">Pending</span>
+                                {% elif request.status == 'approved' %}
+                                <span class="badge bg-success">Approved</span>
+                                {% elif request.status == 'rejected' %}
+                                <span class="badge bg-danger">Rejected</span>
+                                {% elif request.status == 'deployed' %}
+                                <span class="badge bg-primary">Deployed</span>
+                                {% elif request.status == 'canceled' %}
+                                <span class="badge bg-secondary">Canceled</span>
+                                {% endif %}
+                            </small>
+                        </div>
+                        <p class="mb-1">{{ request.name }}</p>
+                        <small>Submitted: {{ request.submitted_at|date:"M d, Y" }}</small>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted">No previous token requests found.</p>
+                {% endif %}
+                <div class="mt-3">
+                    <a href="{% url 'developer_portal:token_requests' %}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-list me-1"></i> View All Requests
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="confirmationModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Token Creation Request</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Please review your token creation details:</p>
+                <ul class="list-group mb-3">
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>Token Name:</span>
+                        <strong id="confirm-name"></strong>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>Token Symbol:</span>
+                        <strong id="confirm-symbol"></strong>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>Total Supply:</span>
+                        <strong id="confirm-supply"></strong>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>Network:</span>
+                        <strong id="confirm-network"></strong>
+                    </li>
+                </ul>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Token creation requests cannot be modified after submission.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Back to Edit</button>
+                <button type="button" class="btn btn-primary" id="confirmSubmitBtn">Confirm &amp; Submit</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('tokenCreationForm');
+        const modal = new bootstrap.Modal(document.getElementById('confirmationModal'));
+        
+        // Convert symbol to uppercase as the user types
+        document.getElementById('symbol').addEventListener('input', function() {
+            this.value = this.value.toUpperCase();
+        });
+        
+        // Form submission
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Fill the confirmation modal
+            document.getElementById('confirm-name').innerText = document.getElementById('name').value;
+            document.getElementById('confirm-symbol').innerText = document.getElementById('symbol').value;
+            document.getElementById('confirm-supply').innerText = document.getElementById('total_supply').value;
+            
+            const networkSelect = document.getElementById('network');
+            const networkText = networkSelect.options[networkSelect.selectedIndex].text;
+            document.getElementById('confirm-network').innerText = networkText;
+            
+            // Show the confirmation modal
+            modal.show();
+        });
+        
+        // Handle final submission after confirmation
+        document.getElementById('confirmSubmitBtn').addEventListener('click', function() {
+            form.submit();
+            modal.hide();
+        });
+    });
+</script>
+{% endblock %}

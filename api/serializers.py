@@ -2,6 +2,7 @@ from rest_framework import serializers
 from users.models import Project, AppUser
 from tokenization.models import TokenizationRule, Interaction
 from blockchain.models import TokenRedemption
+from decimal import Decimal, InvalidOperation
 
 class ProjectSerializer(serializers.ModelSerializer):
     """
@@ -27,8 +28,10 @@ class TokenizationRuleSerializer(serializers.ModelSerializer):
         model = TokenizationRule
         fields = ['id', 'project', 'action_type', 'custom_action_name', 'base_amount', 
                  'cooldown_hours', 'cooldown_minutes', 'one_time', 'multiplier', 
-                 'min_duration_seconds', 'is_active', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'created_at', 'updated_at']
+                 'min_duration_seconds', 'is_active', 'created_at', 'updated_at',
+                 'description', 'code_snippet_js', 'code_snippet_react', 'code_snippet_html']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'code_snippet_js', 
+                           'code_snippet_react', 'code_snippet_html']
 
 class AppUserSerializer(serializers.ModelSerializer):
     """

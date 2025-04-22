@@ -18,6 +18,13 @@ import logging
 
 logger = logging.getLogger('django')
 
+from blockchain.models import TokenCreationRequest
+from blockchain.services import TokenService
+from rest_framework.decorators import permission_classes
+from rest_framework.permissions import IsAdminUser
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
+
 class TokenizationRuleViewSet(viewsets.ModelViewSet):
     """
     API endpoints for managing tokenization rules.
@@ -148,6 +155,52 @@ class TokenizationRuleViewSet(viewsets.ModelViewSet):
                 'id': rule.id,
                 'is_active': rule.is_active,
                 'message': f"Rule '{rule.action_type}' {status_msg} successfully"
+            })
+            
+        except TokenizationRule.DoesNotExist:
+            return Response({
+                'error': 'Rule not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+    @swagger_auto_schema(
+        operation_description="Get code snippets for implementing a specific tokenization rule",
+        responses={
+            200: openapi.Response(
+                description="Code snippets for the rule",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'id': openapi.Schema(type=openapi.TYPE_STRING, format='uuid'),
+                        'action_type': openapi.Schema(type=openapi.TYPE_STRING),
+                        'description': openapi.Schema(type=openapi.TYPE_STRING),
+                        'code_snippet_js': openapi.Schema(type=openapi.TYPE_STRING),
+                        'code_snippet_react': openapi.Schema(type=openapi.TYPE_STRING),
+                        'code_snippet_html': openapi.Schema(type=openapi.TYPE_STRING),
+                        'code_snippet_sdk': openapi.Schema(type=openapi.TYPE_STRING),
+                    }
+                )
+            ),
+            404: "Rule not found"
+        }
+    )
+    @action(detail=True, methods=['get'])
+    def code_snippets(self, request, pk=None):
+        """Get code snippets for implementing a specific tokenization rule"""
+        try:
+            rule = self.get_queryset().get(pk=pk)
+            
+            # Regenerate snippets to ensure they're up to date
+            rule.generate_code_snippets()
+            
+            return Response({
+                'id': rule.id,
+                'action_type': rule.action_type,
+                'custom_action_name': rule.custom_action_name,
+                'description': rule.description or f"Tokenization rule for {rule.action_type}",
+                'code_snippet_js': rule.code_snippet_js,
+                'code_snippet_react': rule.code_snippet_react,
+                'code_snippet_html': rule.code_snippet_html,
+                'code_snippet_sdk': rule.code_snippet_sdk,
             })
             
         except TokenizationRule.DoesNotExist:
@@ -599,4 +652,178 @@ def tokenization_stats(request):
             for item in interactions_by_type
         ],
         'daily_stats': daily_stats
+    })
+
+
+class TokenCreationRequestView(APIView):
+    """
+    API endpoint for managing token creation requests
+    """
+    permission_classes = [IsAdminUser]
+    
+    @swagger_auto_schema(
+        operation_description="List all token creation requests",
+        manual_parameters=[
+            openapi.Parameter(
+                'status', 
+                openapi.IN_QUERY, 
+                description="Filter by status (pending, approved, rejected)", 
+                type=openapi.TYPE_STRING
+            ),
+        ],
+        responses={
+            200: openapi.Response(
+                description="List of token creation requests",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_ARRAY,
+                    items=openapi.Schema(
+                        type=openapi.TYPE_OBJECT,
+                        properties={
+                            'id': openapi.Schema(type=openapi.TYPE_STRING),
+                            'token_name': openapi.Schema(type=openapi.TYPE_STRING),
+                            'token_symbol': openapi.Schema(type=openapi.TYPE_STRING),
+                            'total_supply': openapi.Schema(type=openapi.TYPE_NUMBER),
+                            'project': openapi.Schema(type=openapi.TYPE_STRING),
+                            'status': openapi.Schema(type=openapi.TYPE_STRING),
+                            'created_at': openapi.Schema(type=openapi.TYPE_STRING, format='date-time'),
+                            'updated_at': openapi.Schema(type=openapi.TYPE_STRING, format='date-time'),
+                        }
+                    )
+                )
+            )
+        }
+    )
+    def get(self, request):
+        """List all token creation requests with optional status filter"""
+        status_filter = request.query_params.get('status')
+        
+        # Query token creation requests
+        requests = TokenCreationRequest.objects.all()
+        
+        # Apply status filter if provided
+        if status_filter and status_filter in ['pending', 'approved', 'rejected']:
+            requests = requests.filter(status=status_filter)
+            
+        # Order by created date, newest first
+        requests = requests.order_by('-created_at')
+        
+        # Serialize the data
+        result = [{
+            'id': str(req.id),
+            'token_name': req.token_name,
+            'token_symbol': req.token_symbol,
+            'total_supply': float(req.total_supply),
+            'project': str(req.project.id) if req.project else None,
+            'project_name': req.project.name if req.project else None,
+            'status': req.status,
+            'created_at': req.created_at.isoformat(),
+            'updated_at': req.updated_at.isoformat() if req.updated_at else None,
+        } for req in requests]
+        
+        return Response(result)
+    
+    @swagger_auto_schema(
+        operation_description="Approve or reject a token creation request",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['action', 'request_id'],
+            properties={
+                'action': openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    description="Action to take (approve or reject)",
+                    enum=['approve', 'reject']
+                ),
+                'request_id': openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    description="ID of the token creation request"
+                ),
+                'notes': openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    description="Optional notes about the decision"
+                ),
+            }
+        ),
+        responses={
+            200: openapi.Response(
+                description="Request processed successfully",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'success': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                        'message': openapi.Schema(type=openapi.TYPE_STRING),
+                    }
+                )
+            ),
+            400: "Invalid request",
+            404: "Request not found"
+        }
+    )
+    def post(self, request):
+        """Approve or reject a token creation request"""
+        action = request.data.get('action')
+        request_id = request.data.get('request_id')
+        notes = request.data.get('notes', '')
+        
+        # Validate inputs
+        if not action or action not in ['approve', 'reject']:
+            return Response({'error': 'Invalid action. Must be "approve" or "reject"'}, 
+                           status=status.HTTP_400_BAD_REQUEST)
+        
+        if not request_id:
+            return Response({'error': 'request_id is required'}, 
+                           status=status.HTTP_400_BAD_REQUEST)
+        
+        # Get the token service
+        token_service = TokenService()
+        
+        try:
+            # Process the request based on the action
+            if action == 'approve':
+                result = token_service.approve_token_request(request_id, notes, request.user)
+            else:  # reject
+                result = token_service.reject_token_request(request_id, notes, request.user)
+            
+            if result['success']:
+                return Response(result)
+            else:
+                return Response(result, status=status.HTTP_400_BAD_REQUEST)
+            
+        except TokenCreationRequest.DoesNotExist:
+            return Response({'error': f'Token creation request with id {request_id} not found'}, 
+                           status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error processing token request: {str(e)}")
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+@swagger_auto_schema(
+    operation_description="Get token creation request statistics",
+    responses={
+        200: openapi.Response(
+            description="Token creation request statistics",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    'total_requests': openapi.Schema(type=openapi.TYPE_INTEGER),
+                    'pending_count': openapi.Schema(type=openapi.TYPE_INTEGER),
+                    'approved_count': openapi.Schema(type=openapi.TYPE_INTEGER),
+                    'rejected_count': openapi.Schema(type=openapi.TYPE_INTEGER),
+                }
+            )
+        )
+    }
+)
+def token_request_stats(request):
+    """Get statistics about token creation requests"""
+    total = TokenCreationRequest.objects.count()
+    pending = TokenCreationRequest.objects.filter(status='pending').count()
+    approved = TokenCreationRequest.objects.filter(status='approved').count()
+    rejected = TokenCreationRequest.objects.filter(status='rejected').count()
+    
+    return Response({
+        'total_requests': total,
+        'pending_count': pending,
+        'approved_count': approved,
+        'rejected_count': rejected,
     })

@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from users.models import Project, AppUser, DeveloperProfile
-from blockchain.models import BlockchainNetwork, ProjectToken
+from blockchain.models import BlockchainNetwork, ProjectToken, TokenCreationRequest
 from tokenization.models import TokenizationRule, Interaction
 from .models import APIKey
 from .decorators import verified_developer_required
@@ -283,8 +283,105 @@ def tokenization_rules(request):
     
     if selected_project:
         rules = TokenizationRule.objects.filter(project=selected_project)
+        # Ensure code snippets are generated for each rule
+        for rule in rules:
+            rule.generate_code_snippets()
+            rule.save(update_fields=['code_snippet_js', 'code_snippet_react', 'code_snippet_html', 'code_snippet_sdk'])
     else:
         rules = []
+    
+    # Handle form submissions
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'add':
+            # Create new tokenization rule
+            try:
+                action_type = request.POST.get('action_type')
+                description = request.POST.get('description')
+                # Changed from token_amount to base_amount to match the model field
+                base_amount = request.POST.get('token_amount')
+                cooldown_hours = request.POST.get('cooldown_hours', 0)
+                is_active = request.POST.get('is_active') == 'on'
+                
+                # Handle custom action types
+                custom_action_name = None
+                if action_type == 'custom':
+                    custom_action_name = request.POST.get('custom_action_name')
+                    if not custom_action_name:
+                        messages.error(request, "Custom action name is required for custom action types.")
+                        return redirect('developer_portal:tokenization_rules')
+                
+                # Create the rule
+                rule = TokenizationRule.objects.create(
+                    project=selected_project,
+                    action_type=action_type,
+                    custom_action_name=custom_action_name,
+                    description=description,
+                    base_amount=base_amount,
+                    cooldown_hours=cooldown_hours,
+                    is_active=is_active
+                )
+                # Explicitly generate code snippets to ensure they're created
+                rule.generate_code_snippets()
+                rule.save(update_fields=['code_snippet_js', 'code_snippet_react', 'code_snippet_html', 'code_snippet_sdk'])
+                
+                messages.success(request, f"Rule '{action_type}' created successfully!")
+            except Exception as e:
+                messages.error(request, f"Error creating rule: {str(e)}")
+        
+        elif action == 'edit':
+            # Update existing tokenization rule
+            try:
+                rule_id = request.POST.get('rule_id')
+                rule = TokenizationRule.objects.get(id=rule_id, project=selected_project)
+                
+                rule.action_type = request.POST.get('action_type')
+                rule.description = request.POST.get('description')
+                # Changed from token_amount to base_amount to match the model field
+                rule.base_amount = request.POST.get('token_amount')
+                rule.cooldown_hours = request.POST.get('cooldown_hours', 0)
+                rule.is_active = request.POST.get('is_active') == 'on'
+                
+                # Handle custom action types
+                if rule.action_type == 'custom':
+                    rule.custom_action_name = request.POST.get('custom_action_name')
+                    if not rule.custom_action_name:
+                        messages.error(request, "Custom action name is required for custom action types.")
+                        return redirect('developer_portal:tokenization_rules')
+                else:
+                    rule.custom_action_name = None
+                    
+                # Save the updated rule and regenerate code snippets
+                rule.generate_code_snippets()
+                rule.save()
+                
+                messages.success(request, f"Rule '{rule.action_type}' updated successfully!")
+            except TokenizationRule.DoesNotExist:
+                messages.error(request, "Rule not found.")
+            except Exception as e:
+                messages.error(request, f"Error updating rule: {str(e)}")
+        
+        elif action == 'delete':
+            # Delete tokenization rule
+            try:
+                rule_id = request.POST.get('rule_id')
+                rule = TokenizationRule.objects.get(id=rule_id, project=selected_project)
+                action_type = rule.action_type
+                rule.delete()
+                
+                messages.success(request, f"Rule '{action_type}' deleted successfully!")
+            except TokenizationRule.DoesNotExist:
+                messages.error(request, "Rule not found.")
+            except Exception as e:
+                messages.error(request, f"Error deleting rule: {str(e)}")
+        
+        # Refresh rules after changes
+        rules = TokenizationRule.objects.filter(project=selected_project)
+        # Ensure code snippets are generated for each rule after any changes
+        for rule in rules:
+            rule.generate_code_snippets()
+            rule.save(update_fields=['code_snippet_js', 'code_snippet_react', 'code_snippet_html', 'code_snippet_sdk'])
     
     context = {
         'projects': projects,
@@ -335,3 +432,123 @@ def create_project(request):
     
     context = {}
     return render(request, 'developer_portal/create_project.html', context)
+
+@login_required
+@verified_developer_required
+def create_token_request(request):
+    """Create a new token creation request"""
+    projects = Project.objects.filter(developer=request.user, is_active=True)
+    selected_project = projects.first()
+    blockchain_networks = BlockchainNetwork.objects.filter(is_active=True)
+    
+    # Check if the project already has pending token requests
+    existing_pending_requests = None
+    if selected_project:
+        existing_pending_requests = TokenCreationRequest.objects.filter(
+            project=selected_project, 
+            status='pending'
+        ).first()
+    
+    # Check if the project already has deployed tokens
+    existing_tokens = None
+    if selected_project:
+        existing_tokens = ProjectToken.objects.filter(
+            project=selected_project,
+            is_deployed=True
+        ).first()
+    
+    if request.method == 'POST' and selected_project:
+        # Extract form data
+        name = request.POST.get('token_name')
+        symbol = request.POST.get('token_symbol')
+        total_supply = request.POST.get('total_supply')
+        network_id = request.POST.get('network')
+        admin_address = request.POST.get('admin_address')
+        decimals = request.POST.get('decimals', 18)
+        
+        # Validate form data
+        if not all([name, symbol, total_supply, network_id, admin_address]):
+            messages.error(request, "All fields are required.")
+        else:
+            try:
+                # Convert to appropriate types
+                total_supply = int(total_supply)
+                decimals = int(decimals)
+                network = BlockchainNetwork.objects.get(id=network_id)
+                
+                # Create token request
+                token_request = TokenCreationRequest.objects.create(
+                    project=selected_project,
+                    name=name,
+                    symbol=symbol,
+                    total_supply=total_supply,
+                    network=network,
+                    admin_address=admin_address,
+                    decimals=decimals,
+                    status='pending'
+                )
+                
+                messages.success(request, "Token creation request submitted successfully! It is now pending admin approval.")
+                return redirect('developer_portal:token_requests')
+            except BlockchainNetwork.DoesNotExist:
+                messages.error(request, "Selected blockchain network is not valid.")
+            except ValueError:
+                messages.error(request, "Invalid numeric values for total supply or decimals.")
+            except Exception as e:
+                messages.error(request, f"Error creating token request: {str(e)}")
+    
+    context = {
+        'projects': projects,
+        'selected_project': selected_project,
+        'blockchain_networks': blockchain_networks,
+        'existing_pending_requests': existing_pending_requests,
+        'existing_tokens': existing_tokens,
+    }
+    return render(request, 'developer_portal/create_token_request.html', context)
+
+@login_required
+@verified_developer_required
+def token_requests(request):
+    """View and manage token creation requests"""
+    projects = Project.objects.filter(developer=request.user, is_active=True)
+    selected_project = projects.first()
+    
+    # Get all token requests for the selected project
+    token_requests = []
+    if selected_project:
+        token_requests = TokenCreationRequest.objects.filter(
+            project=selected_project
+        ).order_by('-submitted_at')
+    
+    # Get deployed tokens for the project
+    deployed_tokens = []
+    if selected_project:
+        deployed_tokens = ProjectToken.objects.filter(
+            project=selected_project,
+            is_deployed=True
+        )
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        request_id = request.POST.get('request_id')
+        
+        if request_id:
+            token_request = get_object_or_404(TokenCreationRequest, id=request_id, project__developer=request.user)
+            
+            if action == 'cancel' and token_request.status in ['pending', 'approved']:
+                token_request.cancel()
+                messages.success(request, "Token request canceled successfully.")
+            else:
+                messages.error(request, f"Invalid action: {action}")
+        else:
+            messages.error(request, "Request ID not provided.")
+        
+        return redirect('developer_portal:token_requests')
+    
+    context = {
+        'projects': projects,
+        'selected_project': selected_project,
+        'token_requests': token_requests,
+        'deployed_tokens': deployed_tokens,
+    }
+    return render(request, 'developer_portal/token_requests.html', context)

@@ -6,7 +6,7 @@ from django.db import transaction
 from django.db.models import Q
 import requests
 import time
-from .models import ProjectToken, TokenTransaction, BlockchainNetwork, UserWallet
+from .models import ProjectToken, TokenTransaction, BlockchainNetwork, UserWallet, TokenCreationRequest
 from .connector import BlockchainConnector
 
 logger = logging.getLogger('django')
@@ -644,6 +644,451 @@ class TokenService:
             
         except Exception as e:
             logger.error(f"Error getting token balance: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    @staticmethod
+    def create_token_request(project, name, symbol, total_supply, admin_address, network_id, decimals=18):
+        """
+        Create a new token creation request for a project (to be approved by admin)
+        
+        Args:
+            project: Project instance
+            name: Token name
+            symbol: Token symbol
+            total_supply: Total supply of tokens
+            admin_address: Admin wallet address
+            network_id: Blockchain network ID
+            decimals: Token decimals
+            
+        Returns:
+            dict: Created token request details
+        """
+        try:
+            # Get the network
+            try:
+                if isinstance(network_id, str) and not network_id.isdigit():
+                    network = BlockchainNetwork.objects.get(chain_id=network_id, is_active=True)
+                else:
+                    network = BlockchainNetwork.objects.get(id=network_id, is_active=True)
+            except BlockchainNetwork.DoesNotExist:
+                return {
+                    'success': False,
+                    'error': f"Network with ID {network_id} not found or not active"
+                }
+            
+            # Check if a pending or approved token request with this symbol already exists for this project and network
+            if TokenCreationRequest.objects.filter(
+                project=project, 
+                symbol=symbol, 
+                network=network,
+                status__in=['pending', 'approved']
+            ).exists():
+                return {
+                    'success': False,
+                    'error': f"Token request with symbol {symbol} already exists for this project on {network.name}"
+                }
+            
+            # Create token creation request in database
+            token_request = TokenCreationRequest.objects.create(
+                project=project,
+                name=name,
+                symbol=symbol,
+                network=network,
+                total_supply=total_supply,
+                admin_address=admin_address,
+                decimals=decimals,
+                status='pending'
+            )
+            
+            logger.info(f"Created token request {token_request.symbol} for project {project.name}")
+            
+            return {
+                'success': True,
+                'request_id': token_request.id,
+                'name': token_request.name,
+                'symbol': token_request.symbol,
+                'status': token_request.status,
+                'message': 'Token request created successfully. Pending admin approval.'
+            }
+            
+        except Exception as e:
+            logger.error(f"Error creating token request: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    @staticmethod
+    def approve_token_request(request_id, reviewer, notes=None):
+        """
+        Approve a token creation request
+        
+        Args:
+            request_id: Token request UUID
+            reviewer: AppUser instance who is approving the request
+            notes: Optional review notes
+            
+        Returns:
+            dict: Approval result
+        """
+        try:
+            # Get the token request
+            token_request = TokenCreationRequest.objects.get(id=request_id)
+            
+            if token_request.status != 'pending':
+                return {
+                    'success': False,
+                    'error': f'Token request is already {token_request.get_status_display()}'
+                }
+            
+            with transaction.atomic():
+                # Approve the request
+                token_request.approve(reviewer, notes)
+                
+                # Create the actual token
+                token_result = TokenService.create_token(
+                    project=token_request.project,
+                    name=token_request.name,
+                    symbol=token_request.symbol,
+                    total_supply=token_request.total_supply,
+                    admin_address=token_request.admin_address,
+                    network_id=token_request.network.id,
+                    decimals=token_request.decimals
+                )
+                
+                if token_result['success']:
+                    # Store the token ID in the request for reference
+                    token_request.token_id = token_result['token_id']
+                    token_request.save(update_fields=['token_id'])
+                    
+                    logger.info(f"Token request {token_request.symbol} approved by {reviewer.external_id} and token created")
+                    
+                    return {
+                        'success': True,
+                        'request_id': token_request.id,
+                        'token_id': token_result['token_id'],
+                        'status': token_request.status,
+                        'message': f"Token request for {token_request.symbol} approved and token created successfully"
+                    }
+                else:
+                    # Revert to pending if token creation fails
+                    token_request.status = 'pending'
+                    token_request.save(update_fields=['status'])
+                    
+                    logger.error(f"Token request approved but token creation failed: {token_result.get('error')}")
+                    
+                    return {
+                        'success': False,
+                        'error': f"Token request approved but token creation failed: {token_result.get('error')}"
+                    }
+            
+        except TokenCreationRequest.DoesNotExist:
+            logger.error(f"Token request with ID {request_id} not found")
+            return {
+                'success': False,
+                'error': f"Token request with ID {request_id} not found"
+            }
+        except Exception as e:
+            logger.error(f"Error approving token request: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    @staticmethod
+    def reject_token_request(request_id, reviewer, rejection_reason=None):
+        """
+        Reject a token creation request
+        
+        Args:
+            request_id: Token request UUID
+            reviewer: AppUser instance who is rejecting the request
+            rejection_reason: Reason for rejection
+            
+        Returns:
+            dict: Rejection result
+        """
+        try:
+            # Get the token request
+            token_request = TokenCreationRequest.objects.get(id=request_id)
+            
+            if token_request.status != 'pending':
+                return {
+                    'success': False,
+                    'error': f'Token request is already {token_request.get_status_display()}'
+                }
+            
+            # Reject the request
+            token_request.status = 'rejected'
+            token_request.reviewed_by = reviewer
+            token_request.reviewed_at = timezone.now()
+            token_request.review_notes = rejection_reason
+            token_request.save()
+            
+            logger.info(f"Token request {token_request.symbol} rejected by {reviewer.external_id}")
+            
+            return {
+                'success': True,
+                'request_id': token_request.id,
+                'status': token_request.status,
+                'message': f"Token request for {token_request.symbol} rejected"
+            }
+            
+        except TokenCreationRequest.DoesNotExist:
+            logger.error(f"Token request with ID {request_id} not found")
+            return {
+                'success': False,
+                'error': f"Token request with ID {request_id} not found"
+            }
+        except Exception as e:
+            logger.error(f"Error rejecting token request: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    @staticmethod
+    def deploy_approved_token(request_id):
+        """
+        Deploy a token from an approved request to the blockchain
+        
+        Args:
+            request_id: Token request UUID
+            
+        Returns:
+            dict: Deployment result
+        """
+        try:
+            # Get the token request
+            token_request = TokenCreationRequest.objects.get(id=request_id)
+            
+            if token_request.status != 'approved':
+                return {
+                    'success': False,
+                    'error': f'Token request must be approved first. Current status: {token_request.get_status_display()}'
+                }
+            
+            with transaction.atomic():
+                # Create the ProjectToken
+                project_token = ProjectToken.objects.create(
+                    project=token_request.project,
+                    name=token_request.name,
+                    symbol=token_request.symbol,
+                    network=token_request.network,
+                    total_supply=token_request.total_supply,
+                    admin_address=token_request.admin_address,
+                    decimals=token_request.decimals,
+                    is_deployed=False
+                )
+                
+                # Deploy the token
+                connector = BlockchainConnector.get_connector_by_network_id(token_request.network.id)
+                result = connector.deploy_token(project_token)
+                
+                if result['success']:
+                    # Link the deployed token to the request and update status
+                    token_request.deployed_token = project_token
+                    token_request.status = 'deployed'
+                    token_request.save(update_fields=['deployed_token', 'status', 'updated_at'])
+                    
+                    logger.info(f"Token {project_token.symbol} from request {request_id} deployed successfully at {result['contract_address']}")
+                    return {
+                        'success': True,
+                        'token_id': project_token.id,
+                        'request_id': token_request.id,
+                        'contract_address': project_token.contract_address,
+                        'tx_hash': project_token.creation_tx_hash,
+                        'message': f"Token {project_token.symbol} deployed successfully"
+                    }
+                else:
+                    # Deployment failed, rollback transaction will delete the ProjectToken
+                    logger.error(f"Failed to deploy token from request: {result.get('error', 'Unknown error')}")
+                    return result
+            
+        except TokenCreationRequest.DoesNotExist:
+            logger.error(f"Token request with ID {request_id} not found")
+            return {
+                'success': False,
+                'error': f"Token request with ID {request_id} not found"
+            }
+        except Exception as e:
+            logger.error(f"Error deploying token from request: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+            
+    @staticmethod
+    def list_token_requests(project=None, status=None):
+        """
+        List token creation requests with optional filtering
+        
+        Args:
+            project: Optional Project instance to filter by
+            status: Optional status to filter by
+            
+        Returns:
+            QuerySet: TokenCreationRequest objects
+        """
+        requests = TokenCreationRequest.objects.all()
+        
+        if project:
+            requests = requests.filter(project=project)
+            
+        if status:
+            if isinstance(status, list):
+                requests = requests.filter(status__in=status)
+            else:
+                requests = requests.filter(status=status)
+                
+        return requests.order_by('-submitted_at')
+    
+    @staticmethod
+    def list_token_requests(status=None, project=None):
+        """
+        List token creation requests with optional filters
+        
+        Args:
+            status: Optional filter by status ('pending', 'approved', 'rejected')
+            project: Optional filter by project
+            
+        Returns:
+            QuerySet: TokenCreationRequest objects
+        """
+        requests = TokenCreationRequest.objects.all().order_by('-created_at')
+        
+        if status:
+            requests = requests.filter(status=status)
+            
+        if project:
+            requests = requests.filter(project=project)
+            
+        return requests
+    
+    @staticmethod
+    def approve_token_request(request_id, approved_by=None):
+        """
+        Approve a token creation request and create the token
+        
+        Args:
+            request_id: TokenCreationRequest ID
+            approved_by: User who approved the request (optional)
+            
+        Returns:
+            dict: Approval result with token details
+        """
+        try:
+            # Get the request
+            try:
+                token_request = TokenCreationRequest.objects.get(id=request_id)
+            except TokenCreationRequest.DoesNotExist:
+                return {
+                    'success': False,
+                    'error': f"Token request with ID {request_id} not found"
+                }
+            
+            # Check if request is already processed
+            if token_request.status != 'pending':
+                return {
+                    'success': False,
+                    'error': f"Token request is already {token_request.status}"
+                }
+            
+            # Create token from the request
+            token_result = TokenService.create_token(
+                project=token_request.project,
+                name=token_request.name,
+                symbol=token_request.symbol,
+                total_supply=token_request.total_supply,
+                admin_address=token_request.admin_address,
+                network_id=token_request.network.id,
+                decimals=token_request.decimals
+            )
+            
+            if not token_result['success']:
+                return {
+                    'success': False,
+                    'error': f"Failed to create token: {token_result.get('error')}"
+                }
+            
+            # Update request status
+            token_request.status = 'approved'
+            token_request.processed_at = timezone.now()
+            token_request.processed_by = approved_by
+            token_request.token_id = token_result.get('token_id')
+            token_request.save(update_fields=['status', 'processed_at', 'processed_by', 'token_id'])
+            
+            logger.info(f"Approved token request {token_request.id} for {token_request.symbol}")
+            
+            return {
+                'success': True,
+                'request_id': token_request.id,
+                'token_id': token_result.get('token_id'),
+                'name': token_request.name,
+                'symbol': token_request.symbol,
+                'message': 'Token request approved successfully. Token created.'
+            }
+            
+        except Exception as e:
+            logger.error(f"Error approving token request: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    @staticmethod
+    def reject_token_request(request_id, reason=None, rejected_by=None):
+        """
+        Reject a token creation request
+        
+        Args:
+            request_id: TokenCreationRequest ID
+            reason: Reason for rejection (optional)
+            rejected_by: User who rejected the request (optional)
+            
+        Returns:
+            dict: Rejection result
+        """
+        try:
+            # Get the request
+            try:
+                token_request = TokenCreationRequest.objects.get(id=request_id)
+            except TokenCreationRequest.DoesNotExist:
+                return {
+                    'success': False,
+                    'error': f"Token request with ID {request_id} not found"
+                }
+            
+            # Check if request is already processed
+            if token_request.status != 'pending':
+                return {
+                    'success': False,
+                    'error': f"Token request is already {token_request.status}"
+                }
+            
+            # Update request status
+            token_request.status = 'rejected'
+            token_request.rejection_reason = reason
+            token_request.processed_at = timezone.now()
+            token_request.processed_by = rejected_by
+            token_request.save(update_fields=['status', 'rejection_reason', 'processed_at', 'processed_by'])
+            
+            logger.info(f"Rejected token request {token_request.id} for {token_request.symbol}")
+            
+            return {
+                'success': True,
+                'request_id': token_request.id,
+                'name': token_request.name,
+                'symbol': token_request.symbol,
+                'reason': reason,
+                'message': 'Token request rejected successfully.'
+            }
+            
+        except Exception as e:
+            logger.error(f"Error rejecting token request: {str(e)}")
             return {
                 'success': False,
                 'error': str(e)

@@ -1,0 +1,121 @@
+{% extends "developer_portal/base.html" %}
+{% load static %}
+
+{% block title %}Token Creation Requests - Developer Portal{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2>Token Creation Requests</h2>
+                <a href="{% url 'developer_portal:create_token_request' %}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>New Token Request
+                </a>
+            </div>
+            
+            {% if token_requests %}
+            <div class="card shadow-sm mb-4">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>Project</th>
+                                    <th>Token Name</th>
+                                    <th>Symbol</th>
+                                    <th>Network</th>
+                                    <th>Status</th>
+                                    <th>Requested On</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for request in token_requests %}
+                                <tr>
+                                    <td>{{ request.project.name }}</td>
+                                    <td>{{ request.token_name }}</td>
+                                    <td>
+                                        <span class="badge bg-light text-dark">{{ request.token_symbol }}</span>
+                                    </td>
+                                    <td>
+                                        {% if request.network.is_testnet %}
+                                        <span class="text-muted">{{ request.network.name }} <small>(Testnet)</small></span>
+                                        {% else %}
+                                        <span>{{ request.network.name }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if request.status == 'pending' %}
+                                            <span class="badge bg-warning text-dark">Pending</span>
+                                        {% elif request.status == 'approved' %}
+                                            <span class="badge bg-success">Approved</span>
+                                        {% elif request.status == 'rejected' %}
+                                            <span class="badge bg-danger">Rejected</span>
+                                        {% elif request.status == 'processing' %}
+                                            <span class="badge bg-info">Processing</span>
+                                        {% elif request.status == 'deployed' %}
+                                            <span class="badge bg-primary">Deployed</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ request.created_at|date:"M d, Y" }}</td>
+                                    <td>
+                                        <a href="{% url 'developer_portal:view_token_request' request.id %}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        {% if request.status == 'pending' %}
+                                        <a href="{% url 'developer_portal:edit_token_request' request.id %}" class="btn btn-sm btn-outline-secondary">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        {% endif %}
+                                        {% if request.status == 'deployed' and request.contract_address %}
+                                        <a href="{{ request.network.explorer_url }}/address/{{ request.contract_address }}" target="_blank" class="btn btn-sm btn-outline-info" title="View on Explorer">
+                                            <i class="fas fa-external-link-alt"></i>
+                                        </a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            {% else %}
+            <div class="card shadow-sm mb-4">
+                <div class="card-body text-center py-5">
+                    <img src="{% static 'developer_portal/images/empty-state.svg' %}" alt="No requests found" style="max-width: 120px; opacity: 0.5;" class="mb-3">
+                    <h4>No Token Requests Yet</h4>
+                    <p class="text-muted">You haven't made any token creation requests yet.</p>
+                    <a href="{% url 'developer_portal:create_token_request' %}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Create Your First Token Request
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+            
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">About Token Creation</h5>
+                </div>
+                <div class="card-body">
+                    <p>Creating tokens on blockchain networks involves several steps:</p>
+                    <ol>
+                        <li>Submit a token creation request with all required details</li>
+                        <li>Our team reviews your request for approval</li>
+                        <li>Upon approval, your token is deployed to the selected network</li>
+                        <li>You receive the contract address and can start using your token</li>
+                    </ol>
+                    <p>For mainnet deployments, additional verification and security reviews may be required.</p>
+                    <p class="mb-0">
+                        <a href="{% url 'developer_portal:token_documentation' %}" class="text-decoration-none">
+                            <i class="fas fa-book me-1"></i>Read our token documentation
+                        </a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
