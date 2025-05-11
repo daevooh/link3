@@ -352,12 +352,20 @@ def token_request_list(request):
 @login_required
 def create_redemption(request):
     """
-    Create a new token redemption request
+    Create a new token redemption request to transfer tokens from off-chain to on-chain
     """
     user = request.user
+    app_user = user.app_user if hasattr(user, 'app_user') else None
+    
+    if not app_user:
+        messages.error(request, "AppUser profile not found")
+        return redirect('blockchain:dashboard')
     
     # Get verified wallets
-    wallets = UserWallet.objects.filter(user=user, is_verified=True).select_related('network')
+    wallets = UserWallet.objects.filter(user=app_user, is_verified=True).select_related('network')
+    
+    # Get user's off-chain token balance
+    off_chain_balance = app_user.token_balance
     
     if request.method == 'POST':
         amount = request.POST.get('amount')
@@ -369,30 +377,64 @@ def create_redemption(request):
             
         try:
             amount = Decimal(amount)
-            wallet = UserWallet.objects.get(id=wallet_id, user=user, is_verified=True)
             
-            # TODO: Check if user has enough balance for redemption
+            # Validate amount (positive and has appropriate precision)
+            if amount <= 0:
+                raise ValueError("Amount must be positive")
+                
+            if amount > off_chain_balance:
+                messages.error(request, f"Insufficient balance. You have {off_chain_balance} tokens available.")
+                return redirect('blockchain:create_redemption')
             
-            # Create redemption
-            TokenRedemption.objects.create(
-                user=user,
-                amount=amount,
-                wallet_address=wallet.address,
-                status='pending'
-            )
+            wallet = UserWallet.objects.get(id=wallet_id, user=app_user, is_verified=True)
             
-            messages.success(request, f"Redemption request for {amount} tokens created successfully")
+            # Start database transaction to ensure atomicity
+            with transaction.atomic():
+                # 1. Deduct from off-chain balance
+                app_user.token_balance -= amount
+                app_user.save(update_fields=['token_balance'])
+                
+                # 2. Create redemption record
+                redemption = TokenRedemption.objects.create(
+                    user=app_user,
+                    amount=amount,
+                    wallet_address=wallet.address,
+                    status='pending'
+                )
+                
+                # 3. Create token transaction record
+                project = Project.objects.filter(developer=user).first()
+                if project:
+                    # Find the token associated with the project and network
+                    project_token = ProjectToken.objects.filter(
+                        project=project, 
+                        network=wallet.network,
+                        is_deployed=True
+                    ).first()
+                    
+                    if project_token:
+                        TokenTransaction.objects.create(
+                            user=app_user,
+                            project_token=project_token,
+                            transaction_type='REDEMPTION',
+                            amount=amount,
+                            wallet_address=wallet.address,
+                            status='PENDING'
+                        )
+            
+            messages.success(request, f"Redemption request for {amount} tokens created successfully. The tokens will be sent to your wallet {wallet.address} shortly.")
             return redirect('blockchain:redemption_list')
             
         except UserWallet.DoesNotExist:
             messages.error(request, "Invalid wallet selection")
-        except ValueError:
-            messages.error(request, "Invalid amount")
+        except ValueError as e:
+            messages.error(request, f"Invalid amount: {str(e)}")
         except Exception as e:
             messages.error(request, f"Error creating redemption: {str(e)}")
     
     context = {
         'wallets': wallets,
+        'off_chain_balance': off_chain_balance,
     }
     
     return render(request, 'blockchain/create_redemption.html', context)

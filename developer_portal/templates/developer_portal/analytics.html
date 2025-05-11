@@ -1,4 +1,4 @@
-w{% extends 'developer_portal/base.html' %}
+{% extends 'developer_portal/base.html' %}
 
 {% block title %}Analytics - Link3 Developer Portal{% endblock %}
 
@@ -68,7 +68,7 @@ w{% extends 'developer_portal/base.html' %}
                     <div class="metric-icon">
                         <i class="fas fa-link"></i>
                     </div>
-                    <h3 class="card-title" id="conversionRate">0%</h3>
+                    <h3 class="card-title">{{ on_chain_conversion_rate|default:"0" }}%</h3>
                     <p class="card-text">On-Chain Conversion Rate</p>
                 </div>
             </div>
@@ -253,12 +253,12 @@ w{% extends 'developer_portal/base.html' %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
 
 <script>
-    // Sample data for charts - in a real implementation, this would come from your backend
+    // Real data from the backend
     const weeklyData = {
-        labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+        labels: [{% for item in weekly_interactions %}'{{ item.label }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
         datasets: [{
             label: 'Interactions',
-            data: [65, 59, 80, 81],
+            data: [{% for item in weekly_interactions %}{{ item.count }}{% if not forloop.last %}, {% endif %}{% endfor %}],
             borderColor: '#0d6efd',
             backgroundColor: 'rgba(13, 110, 253, 0.2)',
             tension: 0.3,
@@ -267,10 +267,10 @@ w{% extends 'developer_portal/base.html' %}
     };
     
     const monthlyData = {
-        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
+        labels: [{% for item in monthly_interactions %}'{{ item.label }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
         datasets: [{
             label: 'Interactions',
-            data: [250, 310, 280, 390, 410],
+            data: [{% for item in monthly_interactions %}{{ item.count }}{% if not forloop.last %}, {% endif %}{% endfor %}],
             borderColor: '#0d6efd',
             backgroundColor: 'rgba(13, 110, 253, 0.2)',
             tension: 0.3,
@@ -279,11 +279,12 @@ w{% extends 'developer_portal/base.html' %}
     };
     
     const actionTypeData = {
-        labels: ['Login', 'Like', 'Comment', 'Share', 'Video Watch', 'Profile Completion'],
+        labels: [{% for item in action_type_data %}'{{ item.action_type }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
         datasets: [{
-            data: [30, 25, 15, 10, 15, 5],
+            data: [{% for item in action_type_data %}{{ item.count }}{% if not forloop.last %}, {% endif %}{% endfor %}],
             backgroundColor: [
-                '#4bc0c0', '#36a2eb', '#ff6384', '#ffcd56', '#9966ff', '#ff9f40'
+                '#4bc0c0', '#36a2eb', '#ff6384', '#ffcd56', '#9966ff', '#ff9f40', 
+                '#4bc0c0', '#36a2eb', '#ff6384', '#ffcd56', '#9966ff', '#ff9f40'  // Extra colors if needed
             ]
         }]
     };
@@ -291,16 +292,21 @@ w{% extends 'developer_portal/base.html' %}
     const userEngagementData = {
         labels: ['Daily', 'Weekly', 'Monthly', 'Inactive'],
         datasets: [{
-            data: [20, 35, 25, 20],
+            data: [
+                {{ user_engagement.daily|default:"0" }},
+                {{ user_engagement.weekly|default:"0" }},
+                {{ user_engagement.monthly|default:"0" }},
+                {{ user_engagement.inactive|default:"0" }}
+            ],
             backgroundColor: ['#28a745', '#17a2b8', '#ffc107', '#dc3545']
         }]
     };
     
     const tokenDistributionData = {
-        labels: ['0-10', '11-50', '51-100', '101-500', '500+'],
+        labels: [{% for item in token_distribution %}'{{ item.range }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
         datasets: [{
             label: 'Number of Users',
-            data: [40, 25, 15, 12, 8],
+            data: [{% for item in token_distribution %}{{ item.count }}{% if not forloop.last %}, {% endif %}{% endfor %}],
             backgroundColor: '#17a2b8',
             borderWidth: 1
         }]
@@ -397,9 +403,6 @@ w{% extends 'developer_portal/base.html' %}
             });
         }
         
-        // Set a sample conversion rate
-        document.getElementById('conversionRate').textContent = '25%';
-        
         // Set up modal event handlers
         const interactionModal = document.getElementById('interactionModal');
         if (interactionModal) {
@@ -443,8 +446,8 @@ w{% extends 'developer_portal/base.html' %}
         } else if (timeFrame === 'monthly') {
             chart.data = monthlyData;
         } else {
-            // Yearly data - would be added in a real implementation
-            chart.data = monthlyData; // Using monthly as a placeholder
+            // Yearly data - would use monthly as a placeholder until yearly data is implemented
+            chart.data = monthlyData;
         }
         
         chart.update();
@@ -459,11 +462,11 @@ w{% extends 'developer_portal/base.html' %}
     
     // Export table data
     function exportData(format) {
-        // In a real implementation, this would trigger a download of the actual data
-        alert(`Exporting data in ${format.toUpperCase()} format...`);
+        // Get the project ID from the URL or a hidden input
+        const projectId = '{{ selected_project.id }}';
         
-        // Example of how you might implement this
-        // window.location.href = `/api/export-interactions?project_id=${projectId}&format=${format}`;
+        // Redirect to the API endpoint for data export
+        window.location.href = `/api/export-interactions?project_id=${projectId}&format=${format}`;
     }
 </script>
 {% endblock %}

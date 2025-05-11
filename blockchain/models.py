@@ -23,13 +23,14 @@ class TokenRedemption(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(AppUser, on_delete=models.CASCADE, related_name='redemptions')
     amount = models.DecimalField(max_digits=36, decimal_places=18)
-     # Make wallet_address nullable (blank=True, null=True) to handle existing records
     wallet_address = models.CharField(max_length=255, blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     transaction_hash = models.CharField(max_length=255, blank=True, null=True)
     created_at = models.DateTimeField(default=timezone.now)
     processed_at = models.DateTimeField(null=True, blank=True)
     error_message = models.TextField(blank=True, null=True)
+    # Add reference to token transaction for tracking
+    transaction_id = models.CharField(max_length=255, blank=True, null=True, help_text="ID of the associated TokenTransaction")
     
     def __str__(self):
         return f"{self.user} - {self.amount} tokens - {self.status}"

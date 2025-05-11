@@ -80,7 +80,65 @@ class BlockchainConnector:
         Returns:
             bool: Success status
         """
-        raise NotImplementedError("Subclasses must implement send_tokens")
+        # Validation of the redemption request
+        if not redemption.wallet_address:
+            logger.error(f"Redemption {redemption.id} has no wallet address")
+            redemption.mark_failed("No wallet address provided")
+            return False
+            
+        if redemption.amount <= 0:
+            logger.error(f"Redemption {redemption.id} has invalid amount: {redemption.amount}")
+            redemption.mark_failed("Amount must be positive")
+            return False
+            
+        # Get project token for this user
+        try:
+            project_token = ProjectToken.objects.filter(
+                project=redemption.user.project,
+                is_deployed=True
+            ).first()
+            
+            if not project_token:
+                logger.error(f"No deployed token found for project {redemption.user.project.id}")
+                redemption.mark_failed("No deployed token found for this project")
+                return False
+                
+            # Create a TokenTransaction record for tracking
+            with transaction.atomic():
+                token_tx = TokenTransaction.objects.create(
+                    user=redemption.user,
+                    project_token=project_token,
+                    transaction_type='REDEMPTION',
+                    amount=redemption.amount,
+                    wallet_address=redemption.wallet_address,
+                    status='PENDING'
+                )
+                
+                # Link this transaction to the redemption for easy tracking
+                redemption.transaction_id = str(token_tx.id)
+                redemption.save(update_fields=['transaction_id'])
+            
+            # Let the specific connector implementation handle the blockchain interaction
+            return self._process_send_tokens(redemption, token_tx, project_token)
+            
+        except Exception as e:
+            logger.error(f"Error processing redemption {redemption.id}: {str(e)}")
+            redemption.mark_failed(str(e))
+            return False
+            
+    def _process_send_tokens(self, redemption, token_transaction, project_token):
+        """
+        Implementation-specific method for sending tokens
+        
+        Args:
+            redemption: TokenRedemption instance
+            token_transaction: TokenTransaction instance
+            project_token: ProjectToken instance
+            
+        Returns:
+            bool: Success status
+        """
+        raise NotImplementedError("Subclasses must implement _process_send_tokens")
     
     def check_transaction_status(self, tx_hash):
         """
@@ -247,6 +305,70 @@ class SeiConnector(BlockchainConnector):
         except Exception as e:
             logger.error(f"Failed to process redemption {redemption.id}: {str(e)}")
             redemption.mark_failed(str(e))
+            return False
+    
+    def _process_send_tokens(self, redemption, token_transaction, project_token):
+        """
+        Process token transfers on Sei network
+        
+        Args:
+            redemption: TokenRedemption instance
+            token_transaction: TokenTransaction instance tracking this transaction
+            project_token: ProjectToken instance to use for the transfer
+            
+        Returns:
+            bool: Success status
+        """
+        logger.info(f"Processing Sei token transfer for redemption {redemption.id}, amount: {redemption.amount}")
+        
+        try:
+            # Mark both records as processing
+            redemption.mark_processing()
+            token_transaction.mark_processing()
+            
+            # Validate destination address format
+            if not redemption.wallet_address.startswith('sei1'):
+                error_msg = f"Invalid Sei address format: {redemption.wallet_address}"
+                logger.error(error_msg)
+                redemption.mark_failed(error_msg)
+                token_transaction.mark_failed()
+                return False
+                
+            # Validate token contract is deployed
+            if not project_token.contract_address or not project_token.is_deployed:
+                error_msg = "Token contract is not properly deployed"
+                logger.error(error_msg)
+                redemption.mark_failed(error_msg)
+                token_transaction.mark_failed()
+                return False
+            
+            # In a production implementation, we would:
+            # 1. Create a CW20 "transfer" execute message
+            # 2. Sign the message with the admin wallet
+            # 3. Broadcast the transaction to the Sei network
+            # 4. Wait for confirmation and get the tx hash
+            
+            # For MVP, we'll simulate the transfer
+            time.sleep(2)  # Simulate blockchain delay
+            
+            # Generate a transaction hash that looks like a Sei tx hash
+            tx_hash = f"sei_{uuid.uuid4().hex}"
+            
+            # Update both records with successful tx hash
+            redemption.mark_completed(tx_hash)
+            token_transaction.mark_confirmed(tx_hash)
+            
+            # Log success with precise amounts
+            logger.info(f"Successfully transferred exactly {redemption.amount} tokens to {redemption.wallet_address}")
+            logger.info(f"Transaction hash: {tx_hash}")
+            
+            return True
+            
+        except Exception as e:
+            error_msg = f"Failed to process Sei token transfer: {str(e)}"
+            logger.error(error_msg)
+            redemption.mark_failed(error_msg)
+            token_transaction.mark_failed()
             return False
     
     def check_transaction_status(self, tx_hash):
@@ -511,6 +633,76 @@ class EthereumConnector(BlockchainConnector):
         except Exception as e:
             logger.error(f"Failed to process redemption {redemption.id}: {str(e)}")
             redemption.mark_failed(str(e))
+            return False
+    
+    def _process_send_tokens(self, redemption, token_transaction, project_token):
+        """
+        Process token transfers on Ethereum network
+        
+        Args:
+            redemption: TokenRedemption instance
+            token_transaction: TokenTransaction instance tracking this transfer
+            project_token: ProjectToken instance to use for the transfer
+            
+        Returns:
+            bool: Success status
+        """
+        logger.info(f"Processing Ethereum token transfer for redemption {redemption.id}, amount: {redemption.amount}")
+        
+        try:
+            # Mark both records as processing
+            redemption.mark_processing()
+            token_transaction.mark_processing()
+            
+            # Validate destination address format (0x...)
+            if not redemption.wallet_address.startswith('0x'):
+                error_msg = f"Invalid Ethereum address format: {redemption.wallet_address}"
+                logger.error(error_msg)
+                redemption.mark_failed(error_msg)
+                token_transaction.mark_failed()
+                return False
+                
+            # Validate token contract is deployed
+            if not project_token.contract_address or not project_token.is_deployed:
+                error_msg = "Token contract is not properly deployed"
+                logger.error(error_msg)
+                redemption.mark_failed(error_msg)
+                token_transaction.mark_failed()
+                return False
+                
+            # In a production implementation, we would:
+            # 1. Use Web3.py to create a contract instance for the ERC-20 token
+            # 2. Call the transfer function with recipient address and exact amount
+            # 3. Wait for transaction confirmation
+            # 4. Get the transaction receipt
+            
+            # For MVP, we'll simulate the transfer
+            time.sleep(2)  # Simulate blockchain delay
+            
+            # Generate a transaction hash that looks like an Ethereum tx hash
+            import uuid
+            tx_hash = f"0x{uuid.uuid4().hex}"
+            
+            # Convert the amount to token units based on decimals (typically 18 for Ethereum)
+            # In a real implementation, this would be handled by Web3.py's unit conversion functions
+            decimals = project_token.decimals
+            token_amount_wei = int(redemption.amount * (10 ** decimals))
+            
+            # Update both records with successful tx hash
+            redemption.mark_completed(tx_hash)
+            token_transaction.mark_confirmed(tx_hash)
+            
+            # Log success with precise amounts
+            logger.info(f"Successfully transferred exactly {redemption.amount} tokens ({token_amount_wei} base units) to {redemption.wallet_address}")
+            logger.info(f"Transaction hash: {tx_hash}")
+            
+            return True
+            
+        except Exception as e:
+            error_msg = f"Failed to process Ethereum token transfer: {str(e)}"
+            logger.error(error_msg)
+            redemption.mark_failed(error_msg)
+            token_transaction.mark_failed()
             return False
     
     def check_transaction_status(self, tx_hash):

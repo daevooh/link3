@@ -1093,3 +1093,179 @@ class TokenService:
                 'success': False,
                 'error': str(e)
             }
+
+import logging
+from django.utils import timezone
+from datetime import timedelta
+from decimal import Decimal
+
+from .models import TokenRedemption, TokenTransaction, ProjectToken
+from .connector import BlockchainConnector
+
+logger = logging.getLogger('django')
+
+class RedemptionProcessor:
+    """
+    Service for processing token redemptions automatically
+    """
+    
+    @staticmethod
+    def process_pending_redemptions(batch_size=10):
+        """
+        Process a batch of pending token redemptions
+        
+        Args:
+            batch_size: Number of redemptions to process in one batch
+            
+        Returns:
+            int: Number of redemptions processed
+        """
+        # Get pending redemptions that are not too recent (allow 30 seconds for potential duplicates)
+        cutoff_time = timezone.now() - timedelta(seconds=30)
+        pending_redemptions = TokenRedemption.objects.filter(
+            status='pending',
+            created_at__lt=cutoff_time
+        ).order_by('created_at')[:batch_size]
+        
+        processed_count = 0
+        
+        for redemption in pending_redemptions:
+            try:
+                # Get the project token based on the user's project
+                project = redemption.user.project
+                
+                # Determine the network based on the wallet address format
+                if redemption.wallet_address.startswith('0x'):
+                    # Ethereum address
+                    project_token = ProjectToken.objects.filter(
+                        project=project,
+                        network__chain_id__in=['1', '5', '11155111'],  # Ethereum networks
+                        is_deployed=True
+                    ).first()
+                    network_name = 'ethereum'
+                elif redemption.wallet_address.startswith('sei1'):
+                    # Sei address
+                    project_token = ProjectToken.objects.filter(
+                        project=project,
+                        network__chain_id__startswith='sei',
+                        is_deployed=True
+                    ).first()
+                    network_name = 'sei'
+                else:
+                    raise ValueError(f"Unsupported wallet address format: {redemption.wallet_address}")
+                
+                if not project_token:
+                    raise ValueError(f"No deployed token found for project {project.id} on network for address {redemption.wallet_address}")
+                
+                # Get the appropriate blockchain connector
+                connector = BlockchainConnector.get_connector_for_network(network_name)
+                
+                # Process the redemption
+                success = connector.send_tokens(redemption)
+                
+                if success:
+                    processed_count += 1
+                    logger.info(f"Successfully processed redemption {redemption.id}")
+                else:
+                    logger.error(f"Failed to process redemption {redemption.id}")
+                
+            except Exception as e:
+                logger.error(f"Error processing redemption {redemption.id}: {str(e)}")
+                redemption.mark_failed(str(e))
+        
+        return processed_count
+    
+    @staticmethod
+    def retry_failed_redemptions(max_retries=3, batch_size=5):
+        """
+        Retry failed redemptions with a temporary error
+        
+        Args:
+            max_retries: Maximum number of retry attempts
+            batch_size: Number of redemptions to retry in one batch
+            
+        Returns:
+            int: Number of redemptions retried
+        """
+        # Find failed redemptions that might be temporary failures (network issues, etc.)
+        # and weren't manually retried by an admin
+        retryable_errors = [
+            "network error", 
+            "timeout", 
+            "connection refused",
+            "service unavailable",
+            "temporary"
+        ]
+        
+        # Build query for retryable errors
+        from django.db.models import Q
+        query = Q()
+        for error in retryable_errors:
+            query |= Q(error_message__icontains=error)
+        
+        # Get failed redemptions that match retryable errors
+        failed_redemptions = TokenRedemption.objects.filter(
+            status='failed',
+            processed_at__gte=timezone.now() - timedelta(hours=24)  # Only retry recent failures
+        ).filter(query)[:batch_size]
+        
+        retried_count = 0
+        
+        for redemption in failed_redemptions:
+            try:
+                # Check if this redemption has been retried too many times
+                # For a real implementation, store retry count in the model
+                retry_count = TokenTransaction.objects.filter(
+                    transaction_id=redemption.transaction_id
+                ).count()
+                
+                if retry_count >= max_retries:
+                    logger.warning(f"Redemption {redemption.id} has been retried {retry_count} times. Skipping.")
+                    continue
+                
+                # Reset the redemption to pending state
+                redemption.status = 'pending'
+                redemption.error_message = None
+                redemption.save(update_fields=['status', 'error_message'])
+                
+                retried_count += 1
+                logger.info(f"Queued redemption {redemption.id} for retry (attempt {retry_count + 1})")
+                
+            except Exception as e:
+                logger.error(f"Error retrying redemption {redemption.id}: {str(e)}")
+        
+        return retried_count
+    
+    @staticmethod
+    def check_processing_redemptions(timeout_minutes=15):
+        """
+        Check on redemptions stuck in processing state
+        
+        Args:
+            timeout_minutes: Minutes after which a processing redemption is considered stuck
+            
+        Returns:
+            int: Number of stuck redemptions handled
+        """
+        # Find redemptions stuck in processing state
+        timeout_threshold = timezone.now() - timedelta(minutes=timeout_minutes)
+        stuck_redemptions = TokenRedemption.objects.filter(
+            status='processing',
+            processed_at__lt=timeout_threshold
+        )
+        
+        handled_count = 0
+        
+        for redemption in stuck_redemptions:
+            try:
+                # For real implementation, check the transaction status on-chain
+                # For now, just mark as failed
+                redemption.mark_failed(f"Transaction timed out after {timeout_minutes} minutes")
+                
+                handled_count += 1
+                logger.warning(f"Marked stuck redemption {redemption.id} as failed")
+                
+            except Exception as e:
+                logger.error(f"Error handling stuck redemption {redemption.id}: {str(e)}")
+        
+        return handled_count

@@ -35,6 +35,12 @@ from users.hashkey import HashKeyManager
 from users.utils import generate_random_user_id
 from . import schema  # Add missing import for schema module
 
+import csv
+import json
+from django.http import HttpResponse, JsonResponse
+from developer_portal.models import Project
+# Removing incorrect import: from .models import Interaction
+
 logger = logging.getLogger('django')
 
 class ProjectAPIKeyPermission(permissions.BasePermission):
@@ -848,3 +854,54 @@ class ApiTestView(APIView):
     )
     def get(self, request):
         return Response({"status": "API authentication working"})
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def export_interactions(request):
+    """Export interactions data for a project in CSV or JSON format"""
+    project_id = request.GET.get('project_id')
+    format_type = request.GET.get('format', 'csv')  # Default to CSV
+    
+    if not project_id:
+        return Response({'error': 'Project ID is required'}, status=400)
+        
+    try:
+        # Verify the project belongs to the current user
+        project = Project.objects.get(id=project_id, developer=request.user)
+    except Project.DoesNotExist:
+        return Response({'error': 'Project not found or access denied'}, status=404)
+    
+    # Get interactions for the project
+    interactions = Interaction.objects.filter(user__project=project).order_by('-timestamp')
+    
+    # Export based on requested format
+    if format_type.lower() == 'json':
+        data = []
+        for interaction in interactions:
+            data.append({
+                'id': interaction.id,
+                'user_id': interaction.user.external_id,
+                'action_type': interaction.action_type,
+                'tokens_earned': interaction.tokens_earned,
+                'timestamp': interaction.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                'metadata': interaction.metadata
+            })
+        return JsonResponse(data, safe=False)
+    else:  # CSV format
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="interactions_{project.name}_{timezone.now().strftime("%Y%m%d")}.csv"'
+        
+        writer = csv.writer(response)
+        writer.writerow(['ID', 'User ID', 'Action Type', 'Tokens Earned', 'Timestamp', 'Metadata'])
+        
+        for interaction in interactions:
+            writer.writerow([
+                interaction.id,
+                interaction.user.external_id,
+                interaction.action_type,
+                interaction.tokens_earned,
+                interaction.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                json.dumps(interaction.metadata) if isinstance(interaction.metadata, dict) else interaction.metadata
+            ])
+        
+        return response

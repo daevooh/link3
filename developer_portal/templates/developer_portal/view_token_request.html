@@ -16,14 +16,19 @@
             
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h2>Token Request Details</h2>
+                <!-- 
                 <div>
                     <a href="{% url 'developer_portal:edit_token_request' token_request.id %}" class="btn btn-outline-primary me-2">
                         <i class="fas fa-edit me-2"></i>Edit Request
                     </a>
-                    <a href="#" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#cancelRequestModal">
-                        <i class="fas fa-times-circle me-2"></i>Cancel Request
-                    </a>
+                    <form method="post" action="{% url 'developer_portal:cancel_token_request' token_request.id %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-times-circle me-2"></i>Cancel Request
+                        </button>
+                    </form>
                 </div>
+                -->
             </div>
             
             <div class="card shadow-sm mb-4">
@@ -49,7 +54,7 @@
                                     </tr>
                                     <tr>
                                         <th scope="row">Submission Date</th>
-                                        <td>{{ token_request.created_at|date:"F j, Y, g:i a" }}</td>
+                                        <td>{{ token_request.submitted_at|date:"F j, Y, g:i a" }}</td>
                                     </tr>
                                     <tr>
                                         <th scope="row">Last Updated</th>
@@ -64,19 +69,16 @@
                                 <tbody>
                                     <tr>
                                         <th scope="row" style="width: 40%;">Token Name</th>
-                                        <td>{{ token_request.token_name }}</td>
+                                        <td>{{ token_request.name }}</td>
                                     </tr>
                                     <tr>
                                         <th scope="row">Token Symbol</th>
-                                        <td>{{ token_request.token_symbol }}</td>
+                                        <td>{{ token_request.symbol }}</td>
                                     </tr>
-                                    <tr>
-                                        <th scope="row">Token Type</th>
-                                        <td>{{ token_request.get_token_type_display }}</td>
-                                    </tr>
+                                
                                     <tr>
                                         <th scope="row">Network</th>
-                                        <td>{{ token_request.get_network_display }}</td>
+                                        <td>{{ token_request.network.name }}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -163,11 +165,12 @@
                                         <th scope="row" style="width: 40%;">Contract Address</th>
                                         <td>
                                             <div class="d-flex align-items-center">
-                                                <code class="me-2">{{ token_request.contract_address }}</code>
+                                                <code class="me-2 text-success fw-bold">{{ token_request.contract_address }}</code>
                                                 <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard('{{ token_request.contract_address }}')">
                                                     <i class="fas fa-copy"></i>
                                                 </button>
                                             </div>
+                                            <span class="badge bg-info mt-1">Sei Testnet</span>
                                         </td>
                                     </tr>
                                     <tr>
@@ -184,9 +187,10 @@
                                     <tr>
                                         <th scope="row">Explorer Link</th>
                                         <td>
-                                            <a href="{{ token_request.get_explorer_url }}" target="_blank" class="btn btn-sm btn-outline-primary">
-                                                <i class="fas fa-external-link-alt me-1"></i> View on Block Explorer
+                                            <a href="{{ token_request.get_explorer_url }}" target="_blank" class="btn btn-primary">
+                                                <i class="fas fa-external-link-alt me-1"></i> View on Sei Testnet Explorer
                                             </a>
+                                            <small class="d-block text-muted mt-1">View your token contract on the Sei blockchain explorer</small>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -195,7 +199,7 @@
                         <div class="col-md-6">
                             <div class="alert alert-success">
                                 <h5><i class="fas fa-check-circle me-2"></i>Token Successfully Deployed</h5>
-                                <p class="mb-0">Your token has been successfully deployed to the {{ token_request.get_network_display }} network. You can now integrate it into your application.</p>
+                                <p class="mb-0">Your token has been successfully deployed to the <strong>Sei testnet</strong> network. You can now integrate it into your application.</p>
                             </div>
                             <div class="d-grid gap-2">
                                 <a href="{% url 'developer_portal:api_docs' %}#token-integration" class="btn btn-outline-primary">

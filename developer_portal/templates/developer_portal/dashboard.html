@@ -183,7 +183,7 @@
                 </div>
             </div>
             <div class="card-footer text-center">
-                <a href="{% url 'developer_portal:analytics' %}" class="text-decoration-none">View All Activity</a>
+                <a href="{% url 'developer_portal:analytics_redirect' %}" class="text-decoration-none">View All Activity</a>
             </div>
         </div>
     </div>
@@ -247,24 +247,43 @@
                     </div>
                     
                     <div class="mb-3">
-                        <h6>API Key</h6>
-                        <div class="input-group mb-1">
-                            <input type="text" class="form-control" value="{{ selected_project.api_key }}" readonly>
-                            <button class="btn btn-outline-secondary" type="button" onclick="copyApiKey()">
-                                <i class="fas fa-copy"></i>
-                            </button>
+                        <h6>API Access</h6>
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="me-2">
+                                <span class="badge bg-success">{{ api_keys_count|default:"0" }} Active Keys</span>
+                            </div>
+                            <a href="{% url 'developer_portal:api_keys' %}" class="ms-auto btn btn-sm btn-outline-primary">
+                                <i class="fas fa-key me-1"></i> Manage API Keys
+                            </a>
                         </div>
-                        <div class="small text-muted">Use this key to authenticate API requests</div>
+                        <div class="small text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Securely manage your API keys in the API Keys section
+                        </div>
                     </div>
                     
                     <div class="mb-3">
                         <h6>Token Status</h6>
-                        {% if selected_project.token_contract_address %}
+                        {% if project_token and project_token.is_deployed %}
+                            <div class="badge bg-success mb-2">Deployed</div>
+                            <p>
+                                <strong>{{ project_token.name }}</strong> ({{ project_token.symbol }})<br>
+                                Contract Address: {{ project_token.contract_address|truncatechars:18 }}<br>
+                                Network: {{ project_token.network.name }}
+                            </p>
+                        {% elif selected_project.token_contract_address %}
                             <div class="badge bg-success mb-2">Deployed</div>
                             <p>Contract Address: {{ selected_project.token_contract_address|truncatechars:18 }}</p>
+                            <div class="small text-warning mt-1">
+                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                Legacy token information. Please update via Token Settings.
+                            </div>
                         {% else %}
                             <div class="badge bg-warning mb-2">Not Deployed</div>
                             <p>Configure and deploy your token to start on-chain integration</p>
+                            <a href="{% url 'developer_portal:create_token_request' %}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-plus-circle me-1"></i> Create Token Request
+                            </a>
                         {% endif %}
                     </div>
                     

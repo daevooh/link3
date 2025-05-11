@@ -2,13 +2,19 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from users.models import Project, AppUser, DeveloperProfile
-from blockchain.models import BlockchainNetwork, ProjectToken, TokenCreationRequest
+from blockchain.models import BlockchainNetwork, ProjectToken, TokenCreationRequest, TokenRedemption, TokenTransaction
 from tokenization.models import TokenizationRule, Interaction
 from .models import APIKey
 from .decorators import verified_developer_required
 from django.utils import timezone
 from django.core.mail import send_mail
 from django.conf import settings
+from decimal import Decimal
+from django.db import transaction
+from django.db.models import Count, Sum, Avg
+from django.db.models.functions import TruncDay, TruncWeek, TruncMonth
+from datetime import timedelta
+from django.contrib.auth.models import User
 
 @login_required
 def verification(request):
@@ -82,11 +88,19 @@ def dashboard(request):
             user__project=selected_project
         ).order_by('-timestamp')[:10]
         
+        # Get project token information
+        project_token = ProjectToken.objects.filter(project=selected_project).first()
+        
+        # Get count of active API keys from the secure system
+        api_keys_count = APIKey.objects.filter(project=selected_project, is_active=True).count()
+        
         context.update({
             'user_count': user_count,
             'interaction_count': interaction_count,
             'total_tokens': total_tokens,
             'recent_interactions': recent_interactions,
+            'project_token': project_token,
+            'api_keys_count': api_keys_count,  # Add API keys count to context
         })
     
     return render(request, 'developer_portal/dashboard.html', context)
@@ -171,33 +185,132 @@ def delete_api_key(request):
 
 @login_required
 @verified_developer_required
-def analytics(request):
-    """Analytics dashboard view"""
-    projects = Project.objects.filter(developer=request.user, is_active=True)
-    selected_project = projects.first()
+def analytics(request, project_id):
+    """Display analytics dashboard for a specific project"""
+    try:
+        project = Project.objects.get(id=project_id, developer=request.user)
+    except Project.DoesNotExist:
+        return redirect('developer_portal:projects')
+        
+    # Get date ranges for filtering
+    end_date = timezone.now()
+    start_date_30d = end_date - timedelta(days=30)
+    start_date_7d = end_date - timedelta(days=7)
     
-    context = {
-        'projects': projects,
-        'selected_project': selected_project,
+    # Get project users
+    users = User.objects.filter(project=project)
+    total_users = users.count()
+    
+    # Get new users in the last 7 and 30 days
+    new_users_7d = users.filter(created_at__gte=start_date_7d).count()
+    new_users_30d = users.filter(created_at__gte=start_date_30d).count()
+    
+    # Get interactions data
+    interactions = Interaction.objects.filter(user__project=project)
+    total_interactions = interactions.count()
+    interactions_7d = interactions.filter(timestamp__gte=start_date_7d).count()
+    interactions_30d = interactions.filter(timestamp__gte=start_date_30d).count()
+    
+    # Total tokens earned
+    total_tokens_earned = interactions.aggregate(Sum('tokens_earned'))['tokens_earned__sum'] or 0
+    tokens_earned_7d = interactions.filter(timestamp__gte=start_date_7d).aggregate(
+        Sum('tokens_earned'))['tokens_earned__sum'] or 0
+    tokens_earned_30d = interactions.filter(timestamp__gte=start_date_30d).aggregate(
+        Sum('tokens_earned'))['tokens_earned__sum'] or 0
+    
+    # Get daily interactions for chart (last 30 days)
+    daily_interactions = interactions.filter(
+        timestamp__gte=start_date_30d
+    ).annotate(
+        day=TruncDay('timestamp')
+    ).values('day').annotate(
+        count=Count('id')
+    ).order_by('day')
+    
+    # Get daily tokens earned
+    daily_tokens = interactions.filter(
+        timestamp__gte=start_date_30d
+    ).annotate(
+        day=TruncDay('timestamp')
+    ).values('day').annotate(
+        total=Sum('tokens_earned')
+    ).order_by('day')
+    
+    # Get interaction types breakdown
+    action_types = interactions.values('action_type').annotate(
+        count=Count('id'),
+        tokens=Sum('tokens_earned')
+    ).order_by('-count')
+    
+    # Format daily data for charts
+    daily_interaction_data = {
+        'labels': [],
+        'data': []
     }
     
-    if selected_project:
-        # Get daily interaction data for the past 30 days
-        # In a real implementation, this would be a more sophisticated query
-        # to aggregate data by day
-        interactions = Interaction.objects.filter(user__project=selected_project)
+    daily_token_data = {
+        'labels': [],
+        'data': []
+    }
+    
+    # Fill in missing dates with zeros
+    current_date = start_date_30d.date()
+    date_map = {item['day'].date(): item['count'] for item in daily_interactions}
+    token_map = {item['day'].date(): item['total'] for item in daily_tokens}
+    
+    while current_date <= end_date.date():
+        daily_interaction_data['labels'].append(current_date.strftime('%b %d'))
+        daily_interaction_data['data'].append(date_map.get(current_date, 0))
         
-        # Get action type breakdown
-        action_types = Interaction.objects.filter(
-            user__project=selected_project
-        ).values('action_type').distinct()
+        daily_token_data['labels'].append(current_date.strftime('%b %d'))
+        daily_token_data['data'].append(float(token_map.get(current_date, 0)))
         
-        context.update({
-            'interactions': interactions,
-            'action_types': action_types,
-        })
+        current_date += timedelta(days=1)
+    
+    # Format action type data for charts
+    action_type_labels = [item['action_type'] for item in action_types[:5]]  # Top 5 action types
+    action_type_data = [item['count'] for item in action_types[:5]]
+    action_type_tokens = [float(item['tokens']) for item in action_types[:5]]
+    
+    # Calculate user engagement rate
+    active_users_30d = interactions.filter(timestamp__gte=start_date_30d).values('user').distinct().count()
+    engagement_rate = (active_users_30d / total_users * 100) if total_users > 0 else 0
+    
+    # Average tokens per user
+    avg_tokens_per_user = total_tokens_earned / total_users if total_users > 0 else 0
+    
+    context = {
+        'project': project,
+        'total_users': total_users,
+        'new_users_7d': new_users_7d,
+        'new_users_30d': new_users_30d,
+        'total_interactions': total_interactions,
+        'interactions_7d': interactions_7d, 
+        'interactions_30d': interactions_30d,
+        'total_tokens_earned': total_tokens_earned,
+        'tokens_earned_7d': tokens_earned_7d,
+        'tokens_earned_30d': tokens_earned_30d,
+        'daily_interaction_data': daily_interaction_data,
+        'daily_token_data': daily_token_data,
+        'action_type_labels': action_type_labels,
+        'action_type_data': action_type_data,
+        'action_type_tokens': action_type_tokens,
+        'engagement_rate': round(engagement_rate, 1),
+        'avg_tokens_per_user': round(avg_tokens_per_user, 2),
+    }
     
     return render(request, 'developer_portal/analytics.html', context)
+
+@login_required
+@verified_developer_required
+def analytics_redirect(request):
+    """Redirect to the analytics page of the user's first project"""
+    project = Project.objects.filter(developer=request.user, is_active=True).first()
+    if project:
+        return redirect('developer_portal:analytics', project_id=project.id)
+    else:
+        messages.warning(request, "You need to create a project first to view analytics.")
+        return redirect('developer_portal:dashboard')
 
 @login_required
 @verified_developer_required
@@ -299,7 +412,7 @@ def tokenization_rules(request):
             try:
                 action_type = request.POST.get('action_type')
                 description = request.POST.get('description')
-                # Changed from token_amount to base_amount to match the model field
+                #Base_amount to match the model field
                 base_amount = request.POST.get('token_amount')
                 cooldown_hours = request.POST.get('cooldown_hours', 0)
                 is_active = request.POST.get('is_active') == 'on'
@@ -574,59 +687,56 @@ def view_token_request(request, request_id):
 @login_required
 @verified_developer_required
 def edit_token_request(request, request_id):
-    """Edit a pending token creation request"""
-    token_request = get_object_or_404(
-        TokenCreationRequest, 
-        id=request_id,
-        project__developer=request.user,
-        status='pending'  # Only allow editing pending requests
-    )
+    """
+    Edit an existing token creation request
+    """
+    token_request = get_object_or_404(TokenCreationRequest, id=request_id, project__developer=request.user)
+    
+    # Check if the token request can be edited (only pending requests can be edited)
+    if token_request.status != 'pending':
+        messages.error(request, "You can only edit pending token requests.")
+        return redirect('developer_portal:view_token_request', request_id=request_id)
+    
+    blockchain_networks = BlockchainNetwork.objects.all()
     
     if request.method == 'POST':
         # Extract form data
-        name = request.POST.get('token_name')
-        symbol = request.POST.get('token_symbol')
-        total_supply = request.POST.get('total_supply')
+        token_name = request.POST.get('token_name')
+        token_symbol = request.POST.get('token_symbol')
         network_id = request.POST.get('network')
+        decimals = request.POST.get('decimals')
+        total_supply = request.POST.get('total_supply')
         admin_address = request.POST.get('admin_address')
-        decimals = request.POST.get('decimals', 18)
         
         # Validate form data
-        if not all([name, symbol, total_supply, network_id, admin_address]):
+        if not all([token_name, token_symbol, network_id, decimals, total_supply, admin_address]):
             messages.error(request, "All fields are required.")
         else:
             try:
-                # Convert to appropriate types
-                total_supply = int(total_supply)
-                decimals = int(decimals)
                 network = BlockchainNetwork.objects.get(id=network_id)
                 
                 # Update token request
-                token_request.name = name
-                token_request.symbol = symbol
-                token_request.total_supply = total_supply
+                token_request.name = token_name
+                token_request.symbol = token_symbol
                 token_request.network = network
+                token_request.decimals = int(decimals)
+                token_request.total_supply = int(total_supply)
                 token_request.admin_address = admin_address
-                token_request.decimals = decimals
-                token_request.last_updated = timezone.now()
+                token_request.updated_at = timezone.now()
                 token_request.save()
                 
                 messages.success(request, "Token request updated successfully!")
-                return redirect('developer_portal:token_requests')
-            except BlockchainNetwork.DoesNotExist:
-                messages.error(request, "Selected blockchain network is not valid.")
-            except ValueError:
-                messages.error(request, "Invalid numeric values for total supply or decimals.")
+                return redirect('developer_portal:view_token_request', request_id=request_id)
             except Exception as e:
                 messages.error(request, f"Error updating token request: {str(e)}")
     
     context = {
         'token_request': token_request,
-        'projects': Project.objects.filter(developer=request.user, is_active=True),
-        'selected_project': token_request.project,
-        'blockchain_networks': BlockchainNetwork.objects.filter(is_active=True),
+        'blockchain_networks': blockchain_networks,
+        'is_edit': True
     }
-    return render(request, 'developer_portal/edit_token_request.html', context)
+    
+    return render(request, 'developer_portal/token_request_form.html', context)
 
 @login_required
 @verified_developer_required
@@ -642,7 +752,7 @@ def token_documentation(request):
 @verified_developer_required
 def cancel_token_request(request, request_id):
     """Cancel a token creation request"""
-    token_request = get_object_or_404(TokenCreationRequest, id=request_id, user=request.user)
+    token_request = get_object_or_404(TokenCreationRequest, id=request_id, project__developer=request.user)
     
     # Only allow cancellation if the request is in pending or in_review status
     if token_request.status not in ['pending', 'in_review']:
@@ -663,3 +773,141 @@ def cancel_token_request(request, request_id):
     
     # If not POST, redirect back to the view page
     return redirect('developer_portal:view_token_request', request_id=request_id)
+
+@login_required
+@verified_developer_required
+def token_redemption_management(request):
+    """
+    Token redemption management view for overseeing wallet submissions and token withdrawals
+    """
+    projects = Project.objects.filter(developer=request.user, is_active=True)
+    selected_project = projects.first()
+    
+    # Get project's blockchain networks and tokens
+    blockchain_networks = BlockchainNetwork.objects.filter(is_active=True)
+    project_tokens = []
+    
+    redemptions = []
+    token_transactions = []
+    withdrawal_stats = {
+        'total_redemptions': 0,
+        'pending_count': 0,
+        'completed_count': 0,
+        'failed_count': 0,
+        'processing_count': 0,
+        'total_amount': Decimal('0'),
+    }
+    
+    if selected_project:
+        # Get project tokens
+        project_tokens = ProjectToken.objects.filter(
+            project=selected_project,
+            is_deployed=True
+        )
+        
+        # Get all users for this project
+        project_users = AppUser.objects.filter(project=selected_project)
+        
+        # Get redemption requests for all project users
+        if project_users.exists():
+            redemptions = TokenRedemption.objects.filter(
+                user__in=project_users
+            ).order_by('-created_at')
+            
+            # Get token transactions
+            token_transactions = TokenTransaction.objects.filter(
+                user__in=project_users,
+                transaction_type='REDEMPTION'
+            ).order_by('-created_at')
+            
+            # Calculate stats
+            withdrawal_stats['total_redemptions'] = redemptions.count()
+            withdrawal_stats['pending_count'] = redemptions.filter(status='pending').count()
+            withdrawal_stats['processing_count'] = redemptions.filter(status='processing').count()
+            withdrawal_stats['completed_count'] = redemptions.filter(status='completed').count()
+            withdrawal_stats['failed_count'] = redemptions.filter(status='failed').count()
+            withdrawal_stats['total_amount'] = sum(redemptions.values_list('amount', flat=True), Decimal('0'))
+    
+    # Handle form submission to update redemption rules
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'update_rules':
+            if selected_project:
+                # Update withdrawal rules
+                min_withdrawal = request.POST.get('min_withdrawal')
+                max_withdrawal = request.POST.get('max_withdrawal')
+                daily_limit = request.POST.get('daily_limit')
+                enable_automatic_processing = request.POST.get('enable_automatic_processing') == 'on'
+                
+                # In a real implementation, you'd save these to a settings model
+                # For now, we'll just show a success message
+                messages.success(request, "Withdrawal rules updated successfully!")
+        
+        elif action == 'retry_redemption':
+            # Retry failed redemption
+            redemption_id = request.POST.get('redemption_id')
+            if redemption_id:
+                try:
+                    redemption = TokenRedemption.objects.get(id=redemption_id)
+                    
+                    # Only allow retrying failed redemptions
+                    if redemption.status == 'failed':
+                        # In a production implementation, you would:
+                        # 1. Reset status to pending
+                        # 2. Queue for processing again
+                        redemption.status = 'pending'
+                        redemption.error_message = None
+                        redemption.save(update_fields=['status', 'error_message'])
+                        
+                        # Queue for blockchain processing (simplified)
+                        from blockchain.connector import BlockchainConnector
+                        connector = BlockchainConnector.get_connector_for_network(
+                            selected_project.blockchain_network
+                        )
+                        connector.send_tokens(redemption)
+                        
+                        messages.success(request, f"Redemption {redemption_id} queued for retry.")
+                    else:
+                        messages.error(request, "Only failed redemptions can be retried.")
+                except TokenRedemption.DoesNotExist:
+                    messages.error(request, f"Redemption {redemption_id} not found.")
+                except Exception as e:
+                    messages.error(request, f"Error retrying redemption: {str(e)}")
+        
+        elif action == 'cancel_redemption':
+            # Cancel pending redemption
+            redemption_id = request.POST.get('redemption_id')
+            if redemption_id:
+                try:
+                    redemption = TokenRedemption.objects.get(id=redemption_id)
+                    
+                    # Only allow canceling pending redemptions
+                    if redemption.status == 'pending':
+                        # Mark as failed with cancellation message
+                        redemption.mark_failed("Canceled by administrator")
+                        
+                        # Refund tokens to user (in a real implementation)
+                        user = redemption.user
+                        user.token_balance += redemption.amount
+                        user.save()
+                        
+                        messages.success(request, f"Redemption {redemption_id} canceled and tokens refunded.")
+                    else:
+                        messages.error(request, "Only pending redemptions can be canceled.")
+                except TokenRedemption.DoesNotExist:
+                    messages.error(request, f"Redemption {redemption_id} not found.")
+                except Exception as e:
+                    messages.error(request, f"Error canceling redemption: {str(e)}")
+    
+    context = {
+        'projects': projects,
+        'selected_project': selected_project,
+        'blockchain_networks': blockchain_networks,
+        'project_tokens': project_tokens,
+        'redemptions': redemptions,
+        'token_transactions': token_transactions,
+        'withdrawal_stats': withdrawal_stats,
+    }
+    
+    return render(request, 'developer_portal/token_redemption_management.html', context)

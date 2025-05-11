@@ -147,13 +147,22 @@
                     <a href="{% url 'developer_portal:tokenization_rules' %}" class="list-group-item list-group-item-action {% if request.resolver_match.url_name == 'tokenization_rules' %}active{% endif %}">
                         <i class="fas fa-coins me-2"></i> Tokenization Rules
                     </a>
+                    
+                    <!-- Token Management Section -->
+                    <div class="list-group-header small text-uppercase mt-3 mb-2 ms-2 text-muted">
+                        <i class="fas fa-coins me-1"></i> Token Management
+                    </div>
                     <a href="{% url 'developer_portal:token_requests' %}" class="list-group-item list-group-item-action {% if request.resolver_match.url_name == 'token_requests' %}active{% endif %}">
                         <i class="fas fa-list-alt me-2"></i> Your Token Requests
                     </a>
                     <a href="{% url 'developer_portal:create_token_request' %}" class="list-group-item list-group-item-action {% if request.resolver_match.url_name == 'create_token_request' %}active{% endif %}">
                         <i class="fas fa-plus-circle me-2"></i> Create Token
                     </a>
-                    <a href="{% url 'developer_portal:analytics' %}" class="list-group-item list-group-item-action {% if request.resolver_match.url_name == 'analytics' %}active{% endif %}">
+                    <a href="{% url 'developer_portal:token_redemption_management' %}" class="list-group-item list-group-item-action {% if request.resolver_match.url_name == 'token_redemption_management' %}active{% endif %}">
+                        <i class="fas fa-exchange-alt me-2"></i> Redemption Management
+                    </a>
+                    
+                    <a href="{% url 'developer_portal:analytics_redirect' %}" class="list-group-item list-group-item-action {% if request.resolver_match.url_name == 'analytics_redirect' %}active{% endif %}">
                         <i class="fas fa-chart-line me-2"></i> Analytics
                     </a>
                     <a href="{% url 'developer_portal:settings' %}" class="list-group-item list-group-item-action {% if request.resolver_match.url_name == 'settings' %}active{% endif %}">

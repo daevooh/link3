@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Convert Tokens to On-chain{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Convert Your Off-chain Tokens to On-chain</h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Your current off-chain balance:</strong> {{ off_chain_balance }} tokens
+                    </div>
+                    
+                    {% if wallets %}
+                    <form method="post" class="mt-4">
+                        {% csrf_token %}
+                        <div class="mb-4">
+                            <label for="wallet" class="form-label">Select Destination Wallet</label>
+                            <select id="wallet" name="wallet" class="form-select" required>
+                                <option value="" selected disabled>-- Select a verified wallet --</option>
+                                {% for wallet in wallets %}
+                                <option value="{{ wallet.id }}">{{ wallet.address }} ({{ wallet.network.name }})</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Tokens will be sent to this wallet address on the blockchain</div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="amount" class="form-label">Amount to Convert</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="amount" name="amount" 
+                                       required min="0.000001" step="0.000001" max="{{ off_chain_balance }}"
+                                       placeholder="Enter amount">
+                                <span class="input-group-text">tokens</span>
+                            </div>
+                            <div class="form-text">Enter the number of tokens you want to convert to on-chain</div>
+                        </div>
+                        
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Important:</strong> This operation will transfer your tokens from your off-chain balance to your on-chain wallet. This process cannot be reversed.
+                        </div>
+                        
+                        <div class="d-flex justify-content-between align-items-center mt-4">
+                            <a href="{% url 'blockchain:wallet_management' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-wallet me-2"></i> Manage Wallets
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-exchange-alt me-2"></i> Convert Tokens
+                            </button>
+                        </div>
+                    </form>
+                    
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>No verified wallets found.</strong> You need to add and verify a wallet before you can convert tokens to on-chain.
+                    </div>
+                    <div class="text-center mt-4">
+                        <a href="{% url 'blockchain:wallet_management' %}" class="btn btn-primary">
+                            <i class="fas fa-wallet me-2"></i> Add a Wallet
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="card-footer bg-light">
+                    <div class="small text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        After submission, your request will be processed and tokens will be sent to your blockchain wallet.
+                        You can track the status in your <a href="{% url 'blockchain:redemption_list' %}">redemption history</a>.
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mt-4 shadow">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">About Token Conversion</h5>
+                </div>
+                <div class="card-body">
+                    <h6>How Off-chain to On-chain Conversion Works:</h6>
+                    <ol>
+                        <li>You submit a conversion request with the amount and destination wallet.</li>
+                        <li>Our system deducts the tokens from your off-chain balance.</li>
+                        <li>Your request is sent to our blockchain service for processing.</li>
+                        <li>Smart contracts transfer the equivalent amount of tokens to your wallet.</li>
+                        <li>Once the blockchain transaction is confirmed, your request is marked as completed.</li>
+                    </ol>
+                    <p class="mb-0">
+                        <strong>Note:</strong> The processing time depends on blockchain network congestion and can take a few minutes to complete.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

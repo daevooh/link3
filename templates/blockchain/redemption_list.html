@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block title %}Your Token Redemption History{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Your Token Redemption History</h2>
+                <a href="{% url 'blockchain:create_redemption' %}" class="btn btn-primary">
+                    <i class="fas fa-exchange-alt me-2"></i> Convert More Tokens
+                </a>
+            </div>
+            
+            {% if redemptions %}
+            <div class="card shadow">
+                <div class="card-header bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Redemption Requests</h5>
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-secondary filter-btn active" data-filter="all">All</button>
+                            <button type="button" class="btn btn-outline-warning filter-btn" data-filter="pending">Pending</button>
+                            <button type="button" class="btn btn-outline-info filter-btn" data-filter="processing">Processing</button>
+                            <button type="button" class="btn btn-outline-success filter-btn" data-filter="completed">Completed</button>
+                            <button type="button" class="btn btn-outline-danger filter-btn" data-filter="failed">Failed</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Amount</th>
+                                    <th>Wallet</th>
+                                    <th>Network</th>
+                                    <th>Status</th>
+                                    <th>Transaction</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for redemption in redemptions %}
+                                <tr class="redemption-row" data-status="{{ redemption.status }}">
+                                    <td>{{ redemption.created_at|date:"M d, Y H:i" }}</td>
+                                    <td>{{ redemption.amount|floatformat:6 }} tokens</td>
+                                    <td>
+                                        <span class="d-inline-block text-truncate" style="max-width: 150px;">
+                                            {{ redemption.wallet_address }}
+                                        </span>
+                                        <button class="btn btn-sm btn-link p-0 ms-1 copy-btn" 
+                                                data-clipboard-text="{{ redemption.wallet_address }}" 
+                                                title="Copy to clipboard">
+                                            <i class="fas fa-copy small"></i>
+                                        </button>
+                                    </td>
+                                    <td>
+                                        {% if redemption.wallet_address|slice:":2" == "0x" %}
+                                        <span class="badge bg-info">Ethereum</span>
+                                        {% elif redemption.wallet_address|slice:":4" == "sei1" %}
+                                        <span class="badge bg-success">Sei</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Unknown</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if redemption.status == "pending" %}
+                                        <span class="badge bg-warning text-dark">Pending</span>
+                                        {% elif redemption.status == "processing" %}
+                                        <span class="badge bg-info">Processing</span>
+                                        {% elif redemption.status == "completed" %}
+                                        <span class="badge bg-success">Completed</span>
+                                        {% elif redemption.status == "failed" %}
+                                        <span class="badge bg-danger">Failed</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if redemption.transaction_hash %}
+                                        <span class="d-inline-block text-truncate" style="max-width: 100px;">
+                                            {{ redemption.transaction_hash }}
+                                        </span>
+                                        <button class="btn btn-sm btn-link p-0 ms-1 copy-btn" 
+                                                data-clipboard-text="{{ redemption.transaction_hash }}" 
+                                                title="Copy to clipboard">
+                                            <i class="fas fa-copy small"></i>
+                                        </button>
+                                        
+                                        {% if redemption.wallet_address|slice:":2" == "0x" %}
+                                        <a href="https://etherscan.io/tx/{{ redemption.transaction_hash }}" 
+                                           target="_blank" class="btn btn-sm btn-link p-0 ms-1" 
+                                           title="View on Etherscan">
+                                            <i class="fas fa-external-link-alt small"></i>
+                                        </a>
+                                        {% elif redemption.wallet_address|slice:":4" == "sei1" %}
+                                        <a href="https://sei.explorers.guru/transaction/{{ redemption.transaction_hash }}" 
+                                           target="_blank" class="btn btn-sm btn-link p-0 ms-1" 
+                                           title="View on Sei Explorer">
+                                            <i class="fas fa-external-link-alt small"></i>
+                                        </a>
+                                        {% endif %}
+                                        {% else %}
+                                        <span class="text-muted">Not available yet</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% if redemption.status == "failed" and redemption.error_message %}
+                                <tr class="redemption-row error-details" data-status="{{ redemption.status }}">
+                                    <td colspan="6" class="bg-light">
+                                        <div class="alert alert-danger mb-0 py-2">
+                                            <strong>Error:</strong> {{ redemption.error_message }}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endif %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% if redemptions.has_other_pages %}
+                <div class="card-footer">
+                    <nav aria-label="Redemption pagination">
+                        <ul class="pagination justify-content-center mb-0">
+                            {% if redemptions.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1">&laquo; First</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ redemptions.previous_page_number }}">Previous</a>
+                            </li>
+                            {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">&laquo; First</span>
+                            </li>
+                            <li class="page-item disabled">
+                                <span class="page-link">Previous</span>
+                            </li>
+                            {% endif %}
+                            
+                            <li class="page-item active">
+                                <span class="page-link">
+                                    Page {{ redemptions.number }} of {{ redemptions.paginator.num_pages }}
+                                </span>
+                            </li>
+                            
+                            {% if redemptions.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ redemptions.next_page_number }}">Next</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ redemptions.paginator.num_pages }}">Last &raquo;</a>
+                            </li>
+                            {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">Next</span>
+                            </li>
+                            <li class="page-item disabled">
+                                <span class="page-link">Last &raquo;</span>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            </div>
+            {% else %}
+            <div class="card shadow">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-exchange-alt fa-3x text-muted mb-3"></i>
+                    <h4>No redemption history yet</h4>
+                    <p class="text-muted mb-4">You haven't made any token redemption requests.</p>
+                    <a href="{% url 'blockchain:create_redemption' %}" class="btn btn-primary">
+                        <i class="fas fa-exchange-alt me-2"></i> Convert Tokens to On-chain
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+            
+            <div class="card mt-4 shadow">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">About Token Redemption</h5>
+                </div>
+                <div class="card-body">
+                    <h6>Understanding Token Redemption Statuses:</h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <span class="badge bg-warning text-dark me-2">Pending</span>
+                            Your request has been received and is waiting to be processed
+                        </li>
+                        <li class="mb-2">
+                            <span class="badge bg-info me-2">Processing</span>
+                            Your request is being processed, and tokens are being sent to the blockchain
+                        </li>
+                        <li class="mb-2">
+                            <span class="badge bg-success me-2">Completed</span>
+                            Your tokens have been successfully transferred to your on-chain wallet
+                        </li>
+                        <li>
+                            <span class="badge bg-danger me-2">Failed</span>
+                            There was an issue with your redemption request
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Copy to clipboard functionality
+        const copyButtons = document.querySelectorAll('.copy-btn');
+        copyButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const textToCopy = this.getAttribute('data-clipboard-text');
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    // Change icon to check mark briefly
+                    const icon = this.querySelector('i');
+                    const originalClass = icon.className;
+                    icon.className = 'fas fa-check small';
+                    setTimeout(() => {
+                        icon.className = originalClass;
+                    }, 1000);
+                });
+            });
+        });
+        
+        // Filter functionality
+        const filterButtons = document.querySelectorAll('.filter-btn');
+        const redemptionRows = document.querySelectorAll('.redemption-row');
+        
+        filterButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                // Update active button
+                filterButtons.forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                
+                const filter = this.getAttribute('data-filter');
+                
+                // Show/hide rows based on filter
+                redemptionRows.forEach(row => {
+                    if (filter === 'all' || row.getAttribute('data-status') === filter) {
+                        row.style.display = 'table-row';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+        });
+    });
+</script>
+{% endblock %}

@@ -24,6 +24,7 @@ from .views_tokenization import (
     TokenCreationRequestView,
     token_request_stats
 )
+from .views import export_interactions
 
 # Create API documentation schema view
 schema_view = get_schema_view(
@@ -101,4 +102,7 @@ urlpatterns = [
     # Token creation request management endpoints
     path('token-requests/', TokenCreationRequestView.as_view(), name='token-requests'),
     path('token-requests/stats/', token_request_stats, name='token-request-stats'),
+
+    # Export interactions endpoint
+    path('export-interactions/', export_interactions, name='export_interactions'),
 ]

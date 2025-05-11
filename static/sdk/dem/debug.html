@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debugging Page for Token Redemption Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .debug-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .debug-btn {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        .debug-output {
+            background-color: #f1f1f1;
+            padding: 10px;
+            border-radius: 4px;
+            min-height: 100px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Debug Token Redemption Demo</h1>
+    
+    <div class="debug-section">
+        <h2>1. Check LocalStorage Data</h2>
+        <button id="checkStorage" class="debug-btn">Check Storage</button>
+        <button id="clearStorage" class="debug-btn">Clear Storage</button>
+        <div id="storageOutput" class="debug-output"></div>
+    </div>
+    
+    <div class="debug-section">
+        <h2>2. Test MetaMask Connection</h2>
+        <button id="checkMetaMask" class="debug-btn">Check MetaMask</button>
+        <button id="connectMetaMask" class="debug-btn">Connect MetaMask</button>
+        <div id="metaMaskOutput" class="debug-output"></div>
+    </div>
+    
+    <div class="debug-section">
+        <h2>3. Test Wallet Registration</h2>
+        <button id="addWalletTest" class="debug-btn">Test Add Wallet</button>
+        <button id="signMessageTest" class="debug-btn">Test Sign Message</button>
+        <button id="verifyWalletTest" class="debug-btn">Test Verify Wallet</button>
+        <div id="walletTestOutput" class="debug-output"></div>
+    </div>
+    
+    <div class="debug-section">
+        <h2>4. Return to Demo</h2>
+        <a href="token-redemption-demo.html" class="debug-btn">Go to Demo</a>
+    </div>
+    
+    <script src="../js/link3-sdk.js"></script>
+    <script src="../js/link3-wallet.js"></script>
+    <script>
+        // Initialize SDK for testing
+        const testSDK = new Link3SDK({
+            apiKey: 'test_key',
+            debug: true
+        });
+        
+        // Debug outputs
+        const storageOutput = document.getElementById('storageOutput');
+        const metaMaskOutput = document.getElementById('metaMaskOutput');
+        const walletTestOutput = document.getElementById('walletTestOutput');
+        
+        // Storage checks
+        document.getElementById('checkStorage').addEventListener('click', () => {
+            const data = {
+                wallets: JSON.parse(localStorage.getItem('demo_wallets') || '[]'),
+                redemptions: JSON.parse(localStorage.getItem('demo_redemptions') || '[]')
+            };
+            storageOutput.textContent = JSON.stringify(data, null, 2);
+        });
+        
+        document.getElementById('clearStorage').addEventListener('click', () => {
+            localStorage.removeItem('demo_wallets');
+            localStorage.removeItem('demo_redemptions');
+            storageOutput.textContent = 'LocalStorage cleared!';
+        });
+        
+        // MetaMask checks
+        document.getElementById('checkMetaMask').addEventListener('click', async () => {
+            metaMaskOutput.textContent = 'Checking MetaMask...';
+            
+            try {
+                const available = typeof window.ethereum !== 'undefined';
+                const accounts = available ? await window.ethereum.request({ method: 'eth_accounts' }) : [];
+                const connected = accounts.length > 0;
+                
+                metaMaskOutput.textContent = `MetaMask available: ${available}
+Connected: ${connected}
+Accounts: ${accounts.join(', ') || 'none'}`;
+            } catch (error) {
+                metaMaskOutput.textContent = `Error: ${error.message}`;
+            }
+        });
+        
+        document.getElementById('connectMetaMask').addEventListener('click', async () => {
+            metaMaskOutput.textContent = 'Connecting to MetaMask...';
+            
+            try {
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                metaMaskOutput.textContent = `Connected!\nAccounts: ${accounts.join(', ')}`;
+            } catch (error) {
+                metaMaskOutput.textContent = `Error: ${error.message}`;
+            }
+        });
+        
+        // Wallet tests
+        document.getElementById('addWalletTest').addEventListener('click', async () => {
+            walletTestOutput.textContent = 'Testing add wallet...';
+            
+            try {
+                // Override API call for testing
+                testSDK._apiCall = async (endpoint, data) => {
+                    console.log('Mock API call', endpoint, data);
+                    if (endpoint === '/blockchain/wallets/add') {
+                        return { 
+                            success: true, 
+                            wallet: { 
+                                id: 'test_wallet_' + Date.now(), 
+                                address: data.address, 
+                                network_id: data.network_id 
+                            } 
+                        };
+                    }
+                    return { success: false };
+                };
+                
+                // First check if we have accounts
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                if (!accounts || accounts.length === 0) {
+                    throw new Error('No MetaMask accounts available');
+                }
+                
+                // Set test user
+                await testSDK.setUser('test-user');
+                
+                // Add wallet
+                const result = await testSDK.addWallet(accounts[0], 'ethereum-1');
+                walletTestOutput.textContent = `Add wallet success!\nWallet ID: ${result.id}\nAddress: ${result.address}`;
+                
+                // Store for next tests
+                window.testWalletId = result.id;
+                window.testWalletAddress = accounts[0];
+            } catch (error) {
+                walletTestOutput.textContent = `Error: ${error.message}`;
+            }
+        });
+        
+        document.getElementById('signMessageTest').addEventListener('click', async () => {
+            walletTestOutput.textContent = 'Testing message signing...';
+            
+            try {
+                if (!window.testWalletAddress) {
+                    throw new Error('Please run Add Wallet test first');
+                }
+                
+                const message = `Link3: Verify wallet ownership for test wallet`;
+                const signature = await window.ethereum.request({
+                    method: 'personal_sign',
+                    params: [message, window.testWalletAddress]
+                });
+                
+                walletTestOutput.textContent = `Message signed successfully!\nSignature: ${signature.substring(0, 20)}...`;
+                window.testSignature = signature;
+            } catch (error) {
+                walletTestOutput.textContent = `Error: ${error.message}`;
+            }
+        });
+        
+        document.getElementById('verifyWalletTest').addEventListener('click', async () => {
+            walletTestOutput.textContent = 'Testing wallet verification...';
+            
+            try {
+                if (!window.testWalletId || !window.testSignature) {
+                    throw new Error('Please run previous tests first');
+                }
+                
+                // Override API call for testing
+                testSDK._apiCall = async (endpoint, data) => {
+                    console.log('Mock API call', endpoint, data);
+                    if (endpoint === '/blockchain/wallets/verify') {
+                        return { 
+                            success: true, 
+                            wallet: { 
+                                id: window.testWalletId, 
+                                address: window.testWalletAddress,
+                                is_verified: true 
+                            } 
+                        };
+                    }
+                    return { success: false };
+                };
+                
+                // Verify wallet
+                const result = await testSDK.verifyWallet(window.testWalletId, window.testSignature);
+                walletTestOutput.textContent = `Wallet verified!\nWallet ID: ${result.wallet.id}\nVerified: ${result.wallet.is_verified}`;
+            } catch (error) {
+                walletTestOutput.textContent = `Error: ${error.message}`;
+            }
+        });
+    </script>
+</body>
+</html>

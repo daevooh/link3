@@ -1,0 +1,875 @@
+{% extends 'developer_portal/base.html' %}
+
+{% block title %}Token Redemption Management - Link3 Developer Portal{% endblock %}
+
+{% block page_title %}Token Redemption Management{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        border-left: 4px solid;
+        transition: transform 0.2s;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+    }
+    .stat-card.pending {
+        border-left-color: #ffc107;
+    }
+    .stat-card.processing {
+        border-left-color: #17a2b8;
+    }
+    .stat-card.completed {
+        border-left-color: #28a745;
+    }
+    .stat-card.failed {
+        border-left-color: #dc3545;
+    }
+    .stat-card.total {
+        border-left-color: #6f42c1;
+    }
+    
+    .redemption-item {
+        transition: background-color 0.3s;
+    }
+    .redemption-item:hover {
+        background-color: rgba(0, 0, 0, 0.03);
+    }
+    
+    .nav-pills .nav-link.active {
+        background-color: var(--primary-color);
+    }
+    
+    .date-filter {
+        cursor: pointer;
+    }
+    
+    .transaction-details {
+        background-color: #f8f9fa;
+        border-radius: 5px;
+        padding: 15px;
+        margin-top: 10px;
+    }
+    
+    .clipboard-btn {
+        cursor: pointer;
+        padding: 2px 5px;
+        border-radius: 3px;
+        transition: background-color 0.2s;
+    }
+    .clipboard-btn:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+    
+    .network-badge {
+        font-size: 0.8em;
+        padding: 3px 8px;
+    }
+    
+    .table td, .table th {
+        vertical-align: middle;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <!-- Project selector (if multiple projects) -->
+    {% if projects.count > 1 %}
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <form method="get" class="d-flex align-items-center">
+                    <label for="projectSelect" class="me-2">Project:</label>
+                    <select id="projectSelect" name="project_id" class="form-select me-2" style="max-width: 300px;">
+                        {% for project in projects %}
+                        <option value="{{ project.id }}" {% if project == selected_project %}selected{% endif %}>
+                            {{ project.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="btn btn-primary">Switch Project</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="col-12">
+        <!-- Stats Overview -->
+        <div class="row">
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 stat-card pending shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title d-flex justify-content-between align-items-center">
+                            <span>Pending Withdrawals</span>
+                            <span class="badge bg-warning">{{ withdrawal_stats.pending_count }}</span>
+                        </h5>
+                        <div class="d-flex justify-content-between align-items-end mt-3">
+                            <div>
+                                <p class="mb-0 text-muted">Need your attention</p>
+                            </div>
+                            {% if withdrawal_stats.pending_count > 0 %}
+                            <a href="#pendingWithdrawals" class="btn btn-sm btn-outline-warning">Review</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 stat-card processing shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title d-flex justify-content-between align-items-center">
+                            <span>Processing</span>
+                            <span class="badge bg-info">{{ withdrawal_stats.processing_count }}</span>
+                        </h5>
+                        <div class="d-flex justify-content-between align-items-end mt-3">
+                            <div>
+                                <p class="mb-0 text-muted">On-chain transfers in progress</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 stat-card failed shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title d-flex justify-content-between align-items-center">
+                            <span>Failed</span>
+                            <span class="badge bg-danger">{{ withdrawal_stats.failed_count }}</span>
+                        </h5>
+                        <div class="d-flex justify-content-between align-items-end mt-3">
+                            <div>
+                                <p class="mb-0 text-muted">Need intervention</p>
+                            </div>
+                            {% if withdrawal_stats.failed_count > 0 %}
+                            <a href="#failedWithdrawals" class="btn btn-sm btn-outline-danger">Resolve</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card h-100 stat-card completed shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title d-flex justify-content-between align-items-center">
+                            <span>Completed Withdrawals</span>
+                            <span class="badge bg-success">{{ withdrawal_stats.completed_count }}</span>
+                        </h5>
+                        <div class="d-flex justify-content-between align-items-end mt-3">
+                            <div>
+                                <p class="mb-0 text-muted">Successfully processed</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6 mb-4">
+                <div class="card h-100 stat-card total shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title d-flex justify-content-between align-items-center">
+                            <span>Total Withdrawn</span>
+                            <span class="badge bg-primary">{{ withdrawal_stats.total_amount|floatformat:2 }}</span>
+                        </h5>
+                        <div class="d-flex justify-content-between align-items-end mt-3">
+                            <div>
+                                <p class="mb-0 text-muted">Across {{ withdrawal_stats.total_redemptions }} transactions</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Withdrawal Rules Configuration -->
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Withdrawal Rules</h5>
+            </div>
+            <div class="card-body">
+                {% if selected_project %}
+                <form method="post" id="withdrawalRulesForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update_rules">
+
+                    <div class="mb-3">
+                        <label for="minWithdrawal" class="form-label">Minimum Withdrawal Amount</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="minWithdrawal" name="min_withdrawal" 
+                                value="{{ selected_project.min_withdrawal|default:'10' }}" min="0" step="1">
+                            <span class="input-group-text">tokens</span>
+                        </div>
+                        <div class="form-text">Users cannot withdraw less than this amount</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="maxWithdrawal" class="form-label">Maximum Withdrawal Amount</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="maxWithdrawal" name="max_withdrawal" 
+                                value="{{ selected_project.max_withdrawal|default:'10000' }}" min="0" step="1">
+                            <span class="input-group-text">tokens</span>
+                        </div>
+                        <div class="form-text">Users cannot withdraw more than this amount in a single transaction</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="dailyLimit" class="form-label">Daily Withdrawal Limit</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="dailyLimit" name="daily_limit" 
+                                value="{{ selected_project.daily_limit|default:'50000' }}" min="0" step="1">
+                            <span class="input-group-text">tokens</span>
+                        </div>
+                        <div class="form-text">Maximum amount that can be withdrawn per user per day</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="enableAutomaticProcessing" 
+                                name="enable_automatic_processing" checked>
+                            <label class="form-check-label" for="enableAutomaticProcessing">
+                                Enable Automatic Processing
+                            </label>
+                        </div>
+                        <div class="form-text">If enabled, withdrawal requests are processed automatically</div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Save Rules</button>
+                </form>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Please select a project to configure withdrawal rules.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Migration Settings -->
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Migration Settings</h5>
+            </div>
+            <div class="card-body">
+                {% if selected_project %}
+                <div class="mb-4">
+                    <h6 class="mb-3">Available Tokens</h6>
+                    
+                    {% if project_tokens %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Token</th>
+                                    <th>Network</th>
+                                    <th>Contract</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for token in project_tokens %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ token.symbol }}</strong>
+                                        <small class="d-block text-muted">{{ token.name }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary network-badge">
+                                            {{ token.network.name }}
+                                            {% if token.network.is_testnet %}
+                                            <small>(Testnet)</small>
+                                            {% endif %}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <code class="small">{{ token.contract_address|slice:":10" }}...{{ token.contract_address|slice:"-8:" }}</code>
+                                        <span class="clipboard-btn ms-1" data-clipboard-text="{{ token.contract_address }}" 
+                                              title="Copy to clipboard">
+                                            <i class="fas fa-copy"></i>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if token.is_deployed %}
+                                        <span class="badge bg-success">Deployed</span>
+                                        {% else %}
+                                        <span class="badge bg-warning">Pending</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        No deployed tokens found. Please deploy a token first.
+                    </div>
+                    <a href="{% url 'developer_portal:create_token_request' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-plus-circle me-2"></i> Create Token
+                    </a>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                    <h6>Migration Status</h6>
+                    <div class="d-flex align-items-center mt-2 mb-3">
+                        <div class="progress flex-grow-1" style="height: 15px;">
+                            {% if withdrawal_stats.total_amount > 0 %}
+                            {% with progress=withdrawal_stats.total_amount|floatformat:2|stringformat:'s'|slugify %}
+                            <div class="progress-bar bg-success" role="progressbar" style="width: {{ progress }}%;" 
+                                aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100">
+                                {{ progress }}%
+                            </div>
+                            {% endwith %}
+                            {% else %}
+                            <div class="progress-bar" role="progressbar" style="width: 0%;" 
+                                aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                                0%
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <p class="small text-muted mb-0">
+                        <strong>{{ withdrawal_stats.total_amount|floatformat:2 }}</strong> tokens have been migrated from off-chain to on-chain
+                    </p>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Please select a project to view migration settings.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Token Withdrawal Management -->
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-light">
+                <ul class="nav nav-pills card-header-pills">
+                    <li class="nav-item">
+                        <a class="nav-link active" id="all-tab" data-bs-toggle="tab" href="#allWithdrawals">
+                            All Withdrawals
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="pending-tab" data-bs-toggle="tab" href="#pendingWithdrawals">
+                            Pending
+                            {% if withdrawal_stats.pending_count %}<span class="badge bg-warning ms-1">{{ withdrawal_stats.pending_count }}</span>{% endif %}
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="processing-tab" data-bs-toggle="tab" href="#processingWithdrawals">
+                            Processing
+                            {% if withdrawal_stats.processing_count %}<span class="badge bg-info ms-1">{{ withdrawal_stats.processing_count }}</span>{% endif %}
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="completed-tab" data-bs-toggle="tab" href="#completedWithdrawals">
+                            Completed
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="failed-tab" data-bs-toggle="tab" href="#failedWithdrawals">
+                            Failed
+                            {% if withdrawal_stats.failed_count %}<span class="badge bg-danger ms-1">{{ withdrawal_stats.failed_count }}</span>{% endif %}
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                {% if selected_project %}
+                <!-- Search and Filters -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <input type="text" class="form-control" placeholder="Search by user ID, wallet address, or transaction hash..." id="withdrawalSearch">
+                            <button class="btn btn-outline-secondary" type="button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-md-end">
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-outline-secondary date-filter" data-days="7">7 days</button>
+                                <button type="button" class="btn btn-outline-secondary date-filter" data-days="30">30 days</button>
+                                <button type="button" class="btn btn-outline-secondary date-filter" data-days="90">90 days</button>
+                                <button type="button" class="btn btn-outline-secondary date-filter" data-days="0">All time</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Withdrawals Tab Content -->
+                <div class="tab-content">
+                    <!-- All Withdrawals Tab -->
+                    <div class="tab-pane fade show active" id="allWithdrawals">
+                        {% if redemptions %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>User</th>
+                                        <th>Amount</th>
+                                        <th>Wallet</th>
+                                        <th>Status</th>
+                                        <th>Date</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for redemption in redemptions %}
+                                    <tr class="redemption-item" data-id="{{ redemption.id }}">
+                                        <td>{{ redemption.user.external_id }}</td>
+                                        <td>{{ redemption.amount|floatformat:6 }}</td>
+                                        <td>
+                                            <code class="small">{{ redemption.wallet_address|slice:":6" }}...{{ redemption.wallet_address|slice:"-4:" }}</code>
+                                            <span class="clipboard-btn" data-clipboard-text="{{ redemption.wallet_address }}" 
+                                                  title="Copy to clipboard">
+                                                <i class="fas fa-copy"></i>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if redemption.status == 'pending' %}
+                                            <span class="badge bg-warning">Pending</span>
+                                            {% elif redemption.status == 'processing' %}
+                                            <span class="badge bg-info">Processing</span>
+                                            {% elif redemption.status == 'completed' %}
+                                            <span class="badge bg-success">Completed</span>
+                                            {% elif redemption.status == 'failed' %}
+                                            <span class="badge bg-danger">Failed</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ redemption.created_at|date:"M d, Y H:i" }}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-info view-details-btn" 
+                                                data-id="{{ redemption.id }}">
+                                                <i class="fas fa-info-circle"></i> Details
+                                            </button>
+
+                                            {% if redemption.status == 'pending' %}
+                                            <form method="post" class="d-inline">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="cancel_redemption">
+                                                <input type="hidden" name="redemption_id" value="{{ redemption.id }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                    <i class="fas fa-times"></i> Cancel
+                                                </button>
+                                            </form>
+                                            {% elif redemption.status == 'failed' %}
+                                            <form method="post" class="d-inline">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="retry_redemption">
+                                                <input type="hidden" name="redemption_id" value="{{ redemption.id }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-redo"></i> Retry
+                                                </button>
+                                            </form>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    <!-- Expandable Details Row (hidden by default) -->
+                                    <tr class="details-row" id="details-{{ redemption.id }}" style="display:none;">
+                                        <td colspan="6">
+                                            <div class="transaction-details">
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <h6>Redemption Details</h6>
+                                                        <p class="mb-1"><strong>ID:</strong> {{ redemption.id }}</p>
+                                                        <p class="mb-1"><strong>Created:</strong> {{ redemption.created_at|date:"M d, Y H:i:s" }}</p>
+                                                        <p class="mb-1"><strong>User ID:</strong> {{ redemption.user.external_id }}</p>
+                                                        <p class="mb-1"><strong>Amount:</strong> {{ redemption.amount|floatformat:6 }} tokens</p>
+                                                        <p class="mb-1"><strong>Status:</strong> {{ redemption.status }}</p>
+                                                        {% if redemption.processed_at %}
+                                                        <p class="mb-1"><strong>Processed:</strong> {{ redemption.processed_at|date:"M d, Y H:i:s" }}</p>
+                                                        {% endif %}
+                                                        {% if redemption.error_message %}
+                                                        <p class="mb-1 text-danger"><strong>Error:</strong> {{ redemption.error_message }}</p>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <h6>Blockchain Transaction</h6>
+                                                        <p class="mb-1"><strong>Wallet Address:</strong>
+                                                            <code>{{ redemption.wallet_address }}</code>
+                                                            <span class="clipboard-btn" data-clipboard-text="{{ redemption.wallet_address }}">
+                                                                <i class="fas fa-copy"></i>
+                                                            </span>
+                                                        </p>
+                                                        {% if redemption.transaction_hash %}
+                                                        <p class="mb-1"><strong>Transaction Hash:</strong>
+                                                            <code>{{ redemption.transaction_hash }}</code>
+                                                            <span class="clipboard-btn" data-clipboard-text="{{ redemption.transaction_hash }}">
+                                                                <i class="fas fa-copy"></i>
+                                                            </span>
+                                                        </p>
+                                                        <p class="mb-1">
+                                                            <a href="#" class="btn btn-sm btn-outline-secondary" target="_blank">
+                                                                <i class="fas fa-external-link-alt"></i> View on Explorer
+                                                            </a>
+                                                        </p>
+                                                        {% else %}
+                                                        <p class="mb-1 text-muted">No transaction hash available yet.</p>
+                                                        {% endif %}
+                                                        
+                                                        {% if redemption.transaction_id %}
+                                                        <p class="mb-1"><strong>Internal Transaction ID:</strong> {{ redemption.transaction_id }}</p>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            No withdrawal requests found.
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Pending Withdrawals Tab -->
+                    <div class="tab-pane fade" id="pendingWithdrawals">
+                        {% with pending_redemptions=redemptions|dictsortreversed:"created_at"|dictsort:"status" %}
+                        {% if pending_redemptions %}
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="mb-0">Pending Withdrawals</h6>
+                            <button class="btn btn-primary">
+                                <i class="fas fa-bolt me-2"></i> Process All
+                            </button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>User</th>
+                                        <th>Amount</th>
+                                        <th>Wallet</th>
+                                        <th>Date</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for redemption in pending_redemptions %}
+                                    {% if redemption.status == 'pending' %}
+                                    <tr class="redemption-item">
+                                        <td>{{ redemption.user.external_id }}</td>
+                                        <td>{{ redemption.amount|floatformat:6 }}</td>
+                                        <td>
+                                            <code class="small">{{ redemption.wallet_address|slice:":6" }}...{{ redemption.wallet_address|slice:"-4:" }}</code>
+                                            <span class="clipboard-btn" data-clipboard-text="{{ redemption.wallet_address }}">
+                                                <i class="fas fa-copy"></i>
+                                            </span>
+                                        </td>
+                                        <td>{{ redemption.created_at|date:"M d, Y H:i" }}</td>
+                                        <td>
+                                            <div class="btn-group">
+                                                <button class="btn btn-sm btn-success">
+                                                    <i class="fas fa-check"></i> Approve
+                                                </button>
+                                                <form method="post" class="d-inline">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="cancel_redemption">
+                                                    <input type="hidden" name="redemption_id" value="{{ redemption.id }}">
+                                                    <button type="submit" class="btn btn-sm btn-danger">
+                                                        <i class="fas fa-times"></i> Reject
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle me-2"></i>
+                            No pending withdrawal requests.
+                        </div>
+                        {% endif %}
+                        {% endwith %}
+                    </div>
+
+                    <!-- Processing Withdrawals Tab -->
+                    <div class="tab-pane fade" id="processingWithdrawals">
+                        {% with processing_redemptions=redemptions|dictsortreversed:"created_at" %}
+                        {% if processing_redemptions %}
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>User</th>
+                                        <th>Amount</th>
+                                        <th>Wallet</th>
+                                        <th>Date</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for redemption in processing_redemptions %}
+                                    {% if redemption.status == 'processing' %}
+                                    <tr>
+                                        <td>{{ redemption.user.external_id }}</td>
+                                        <td>{{ redemption.amount|floatformat:6 }}</td>
+                                        <td>
+                                            <code class="small">{{ redemption.wallet_address|slice:":6" }}...{{ redemption.wallet_address|slice:"-4:" }}</code>
+                                        </td>
+                                        <td>{{ redemption.created_at|date:"M d, Y H:i" }}</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="spinner-border spinner-border-sm text-info me-2" role="status"></div>
+                                                <span>Processing</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            No transactions currently processing.
+                        </div>
+                        {% endif %}
+                        {% endwith %}
+                    </div>
+
+                    <!-- Completed Withdrawals Tab -->
+                    <div class="tab-pane fade" id="completedWithdrawals">
+                        {% with completed_redemptions=redemptions|dictsortreversed:"created_at" %}
+                        {% if completed_redemptions %}
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>User</th>
+                                        <th>Amount</th>
+                                        <th>Wallet</th>
+                                        <th>Transaction Hash</th>
+                                        <th>Date Completed</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for redemption in completed_redemptions %}
+                                    {% if redemption.status == 'completed' %}
+                                    <tr>
+                                        <td>{{ redemption.user.external_id }}</td>
+                                        <td>{{ redemption.amount|floatformat:6 }}</td>
+                                        <td>
+                                            <code class="small">{{ redemption.wallet_address|slice:":6" }}...{{ redemption.wallet_address|slice:"-4:" }}</code>
+                                        </td>
+                                        <td>
+                                            {% if redemption.transaction_hash %}
+                                            <code class="small">{{ redemption.transaction_hash|slice:":6" }}...{{ redemption.transaction_hash|slice:"-4:" }}</code>
+                                            <span class="clipboard-btn" data-clipboard-text="{{ redemption.transaction_hash }}">
+                                                <i class="fas fa-copy"></i>
+                                            </span>
+                                            {% else %}
+                                            <span class="text-muted">Not available</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ redemption.processed_at|date:"M d, Y H:i" }}</td>
+                                    </tr>
+                                    {% endif %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            No completed withdrawals yet.
+                        </div>
+                        {% endif %}
+                        {% endwith %}
+                    </div>
+
+                    <!-- Failed Withdrawals Tab -->
+                    <div class="tab-pane fade" id="failedWithdrawals">
+                        {% with failed_redemptions=redemptions|dictsortreversed:"created_at" %}
+                        {% if failed_redemptions %}
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>User</th>
+                                        <th>Amount</th>
+                                        <th>Wallet</th>
+                                        <th>Date</th>
+                                        <th>Error</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for redemption in failed_redemptions %}
+                                    {% if redemption.status == 'failed' %}
+                                    <tr>
+                                        <td>{{ redemption.user.external_id }}</td>
+                                        <td>{{ redemption.amount|floatformat:6 }}</td>
+                                        <td>
+                                            <code class="small">{{ redemption.wallet_address|slice:":6" }}...{{ redemption.wallet_address|slice:"-4:" }}</code>
+                                        </td>
+                                        <td>{{ redemption.created_at|date:"M d, Y H:i" }}</td>
+                                        <td>
+                                            <span class="text-danger">{{ redemption.error_message|truncatechars:50 }}</span>
+                                        </td>
+                                        <td>
+                                            <form method="post">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="retry_redemption">
+                                                <input type="hidden" name="redemption_id" value="{{ redemption.id }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-redo"></i> Retry
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle me-2"></i>
+                            No failed withdrawals.
+                        </div>
+                        {% endif %}
+                        {% endwith %}
+                    </div>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Please select a project to manage token redemptions.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Project selector
+        const projectSelect = document.getElementById('projectSelect');
+        if (projectSelect) {
+            projectSelect.addEventListener('change', function() {
+                document.getElementById('projectForm').submit();
+            });
+        }
+        
+        // Tab handling - preserve active tab after page reload
+        const tabHash = window.location.hash;
+        if (tabHash) {
+            const tab = document.querySelector(`a[href="${tabHash}"]`);
+            if (tab) {
+                tab.click();
+            }
+        }
+        
+        // Details view toggle
+        document.querySelectorAll('.view-details-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const redemptionId = this.getAttribute('data-id');
+                const detailsRow = document.getElementById(`details-${redemptionId}`);
+                
+                if (detailsRow.style.display === 'none') {
+                    detailsRow.style.display = 'table-row';
+                    this.innerHTML = '<i class="fas fa-minus-circle"></i> Hide';
+                } else {
+                    detailsRow.style.display = 'none';
+                    this.innerHTML = '<i class="fas fa-info-circle"></i> Details';
+                }
+            });
+        });
+        
+        // Clipboard copy functionality
+        document.querySelectorAll('.clipboard-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const text = this.getAttribute('data-clipboard-text');
+                navigator.clipboard.writeText(text).then(() => {
+                    // Show feedback
+                    const originalHTML = this.innerHTML;
+                    this.innerHTML = '<i class="fas fa-check"></i>';
+                    setTimeout(() => {
+                        this.innerHTML = originalHTML;
+                    }, 1000);
+                });
+            });
+        });
+        
+        // Search functionality
+        const withdrawalSearch = document.getElementById('withdrawalSearch');
+        if (withdrawalSearch) {
+            withdrawalSearch.addEventListener('keyup', function() {
+                const searchText = this.value.toLowerCase();
+                document.querySelectorAll('.redemption-item').forEach(item => {
+                    const text = item.textContent.toLowerCase();
+                    if (text.includes(searchText)) {
+                        item.style.display = 'table-row';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+        }
+        
+        // Date filters
+        document.querySelectorAll('.date-filter').forEach(button => {
+            button.addEventListener('click', function() {
+                // Activate button
+                document.querySelectorAll('.date-filter').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                this.classList.add('active');
+                
+                const days = parseInt(this.getAttribute('data-days'));
+                const now = new Date();
+                const cutoff = new Date();
+                cutoff.setDate(now.getDate() - days);
+                
+                // Filter transactions
+                document.querySelectorAll('.redemption-item').forEach(item => {
+                    // If days is 0, show all
+                    if (days === 0) {
+                        item.style.display = 'table-row';
+                        return;
+                    }
+                    
+                    // Get date from the row (assuming date is in the 5th cell, format: "Apr 25, 2025 12:34")
+                    const dateText = item.querySelectorAll('td')[4].textContent.trim();
+                    const itemDate = new Date(dateText);
+                    
+                    if (itemDate >= cutoff) {
+                        item.style.display = 'table-row';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+        });
+    });
+</script>
+{% endblock %}

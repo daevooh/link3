@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Link3 Token Redemption Demo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f9f9f9;
+            padding-bottom: 2rem;
+        }
+        .navbar {
+            background-color: #6c4bf5 !important;
+        }
+        .demo-section {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+        }
+        .step-number {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            width: 30px;
+            height: 30px;
+            background-color: #6c4bf5;
+            color: white;
+            border-radius: 50%;
+            font-weight: bold;
+            margin-right: 0.5rem;
+        }
+        .logs {
+            background-color: #212529;
+            color: #f8f9fa;
+            border-radius: 5px;
+            padding: 1rem;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            margin-top: 1rem;
+        }
+        .log-entry {
+            margin-bottom: 0.25rem;
+            padding: 0.25rem 0;
+            border-bottom: 1px solid #343a40;
+        }
+        .log-entry pre {
+            color: #f8f9fa;
+            margin: 0;
+        }
+        .success {
+            color: #4caf50;
+        }
+        .error {
+            color: #f44336;
+        }
+        .action-btn {
+            background-color: #6c4bf5;
+            border: none;
+        }
+        .action-btn:hover, .action-btn:focus {
+            background-color: #5638d0;
+        }
+        .token-balance {
+            background-color: #6c4bf5;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .status-badge {
+            font-size: 0.85rem;
+            padding: 0.35em 0.65em;
+        }
+        .wallet-card {
+            background-color: rgba(108, 75, 245, 0.05);
+            border-left: 4px solid #6c4bf5;
+        }
+        .completed-step {
+            opacity: 0.7;
+        }
+        .current-step {
+            border-left: 4px solid #6c4bf5;
+        }
+        #link3Logo {
+            height: 40px;
+        }
+        #flowDiagram {
+            max-width: 100%;
+            height: auto;
+        }
+        .help-text {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center" href="#">
+                <span class="ms-2">Link3 Token Redemption Demo</span>
+            </a>
+            <div class="d-flex align-items-center">
+                <div id="walletStatus" class="text-light me-3">Not connected</div>
+                <button id="connectWalletBtn" class="btn btn-light btn-sm">Connect Wallet</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="row">
+            <div class="col-md-8">
+                <div class="demo-section">
+                    <h2 class="mb-4">Off-Chain to On-Chain Token Conversion Demo</h2>
+                    
+                    <p>This demo shows how to integrate Link3's token redemption system into your application. Follow the steps below to see how users can convert off-chain tokens to on-chain tokens.</p>
+                    
+                    <div class="alert alert-info">
+                        <strong>Current off-chain balance:</strong>
+                        <span id="offChainBalance" class="token-balance ms-2">Loading...</span>
+                    </div>
+                    
+                    <!-- New Tokenization Tasks Section -->
+                    <div class="card mb-4 border-primary" id="tokenizationTasksSection">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">Tokenization Tasks</h5>
+                        </div>
+                        <div class="card-body">
+                            <p>Complete tasks to earn off-chain tokens. These tokens can later be redeemed for on-chain tokens.</p>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <div class="card h-100 shadow-sm">
+                                        <div class="card-body">
+                                            <h6 class="card-title">Daily Check-in</h6>
+                                            <p class="card-text small">Earn tokens by checking in daily.</p>
+                                            <p class="text-primary">+5 tokens</p>
+                                            <button class="btn btn-outline-primary btn-sm task-button" data-task-type="daily_check_in" data-tokens="5">Check In</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card h-100 shadow-sm">
+                                        <div class="card-body">
+                                            <h6 class="card-title">Share Content</h6>
+                                            <p class="card-text small">Simulate sharing content with others.</p>
+                                            <p class="text-primary">+10 tokens</p>
+                                            <button class="btn btn-outline-primary btn-sm task-button" data-task-type="content_share" data-tokens="10">Share</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card h-100 shadow-sm">
+                                        <div class="card-body">
+                                            <h6 class="card-title">Complete Survey</h6>
+                                            <p class="card-text small">Simulate completing a user survey.</p>
+                                            <p class="text-primary">+15 tokens</p>
+                                            <button class="btn btn-outline-primary btn-sm task-button" data-task-type="survey_complete" data-tokens="15">Start Survey</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="card h-100 shadow-sm">
+                                        <div class="card-body">
+                                            <h6 class="card-title">Watch Video</h6>
+                                            <p class="card-text small">Simulate watching a promotional video.</p>
+                                            <p class="text-primary">+8 tokens</p>
+                                            <button class="btn btn-outline-primary btn-sm task-button" data-task-type="video_watch" data-tokens="8">Watch</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card h-100 shadow-sm">
+                                        <div class="card-body">
+                                            <h6 class="card-title">Refer Friend</h6>
+                                            <p class="card-text small">Simulate referring a new user.</p>
+                                            <p class="text-primary">+20 tokens</p>
+                                            <button class="btn btn-outline-primary btn-sm task-button" data-task-type="friend_referral" data-tokens="20">Refer</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="card h-100 shadow-sm">
+                                        <div class="card-body">
+                                            <h6 class="card-title">Create Content</h6>
+                                            <p class="card-text small">Simulate creating original content.</p>
+                                            <p class="text-primary">+25 tokens</p>
+                                            <button class="btn btn-outline-primary btn-sm task-button" data-task-type="content_creation" data-tokens="25">Create</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-light">
+                            <div id="taskHistory" class="small"></div>
+                        </div>
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <!-- Step 1: Connect Wallet -->
+                    <div id="step1" class="mb-4">
+                        <h5>
+                            <span class="step-number">1</span>
+                            Connect Web3 Wallet
+                        </h5>
+                        <p>First, connect your Web3 wallet (like MetaMask) to begin the token redemption process.</p>
+                        <button id="connectWalletBtnMain" class="btn btn-primary action-btn">Connect Wallet</button>
+                        <div id="walletInfo" class="mt-3 d-none">
+                            <div class="card wallet-card">
+                                <div class="card-body">
+                                    <h6 class="card-subtitle mb-2 text-muted">Connected Wallet</h6>
+                                    <p class="card-text mb-1"><strong>Address:</strong> <span id="walletAddress">0x0000...0000</span></p>
+                                    <p class="card-text"><strong>Network:</strong> <span id="walletNetwork">Unknown</span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 2: Register Wallet -->
+                    <div id="step2" class="mb-4 opacity-50">
+                        <h5>
+                            <span class="step-number">2</span>
+                            Register & Verify Wallet
+                        </h5>
+                        <p>Register your wallet with Link3 and verify ownership by signing a message.</p>
+                        <div class="d-grid gap-2">
+                            <button id="registerWalletBtn" class="btn btn-primary action-btn" disabled>Register Wallet</button>
+                            <div class="form-text help-text">This step adds your wallet to your Link3 account and verifies you own it.</div>
+                        </div>
+                        <div id="registeredWalletInfo" class="mt-3 d-none">
+                            <div class="alert alert-success">
+                                <strong>Wallet registered and verified!</strong>
+                                <p class="mb-0 mt-1">Your wallet is now ready to receive on-chain tokens.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 3: Create Redemption -->
+                    <div id="step3" class="mb-4 opacity-50">
+                        <h5>
+                            <span class="step-number">3</span>
+                            Convert Tokens (Off-chain to On-chain)
+                        </h5>
+                        <p>Specify the amount of tokens you want to convert from off-chain to on-chain.</p>
+                        <form id="redemptionForm" class="mb-3">
+                            <div class="mb-3">
+                                <label for="redemptionAmount" class="form-label">Amount to convert</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="redemptionAmount" step="0.0001" min="0.0001" disabled required>
+                                    <span class="input-group-text">tokens</span>
+                                </div>
+                                <div class="form-text help-text">Enter the amount of tokens you want to convert from your off-chain balance.</div>
+                            </div>
+                            <div class="d-grid">
+                                <button type="submit" id="createRedemptionBtn" class="btn btn-primary action-btn" disabled>Create Redemption Request</button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- Step 4: Track Status -->
+                    <div id="step4" class="opacity-50">
+                        <h5>
+                            <span class="step-number">4</span>
+                            Track Redemption Status
+                        </h5>
+                        <p>Track the status of your redemption as it's processed by the blockchain.</p>
+                        <div id="noRedemptions" class="alert alert-secondary">
+                            No redemption requests yet. Complete step 3 to create one.
+                        </div>
+                        <div id="redemptionsList" class="d-none">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Amount</th>
+                                            <th>Status</th>
+                                            <th>Transaction</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="redemptionsTableBody">
+                                    </tbody>
+                                </table>
+                            </div>
+                            <button id="refreshRedemptionsBtn" class="btn btn-outline-primary">Refresh Status</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- SDK Logs -->
+                <div class="demo-section">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0">SDK Logs</h5>
+                        <button id="clearLogsBtn" class="btn btn-sm btn-outline-secondary">Clear</button>
+                    </div>
+                    <div id="sdkLogs" class="logs"></div>
+                </div>
+            </div>
+            
+            <!-- Right Column: Documentation and Flow Diagram -->
+            <div class="col-md-4">
+                <!-- Flow Diagram -->
+                <div class="demo-section">
+                    <h5>Token Redemption Process</h5>
+                    <p class="small">This diagram illustrates how tokens are converted from off-chain to on-chain in the Link3 system.</p>
+                    <img id="flowDiagram" src="redemption-flow.svg" alt="Token Redemption Flow Diagram" class="img-fluid">
+                </div>
+                
+                <!-- Quick Documentation -->
+                <div class="demo-section">
+                    <h5>Quick Documentation</h5>
+                    
+                    <div class="accordion" id="docAccordion">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+                                    How Token Redemption Works
+                                </button>
+                            </h2>
+                            <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#docAccordion">
+                                <div class="accordion-body">
+                                    <p>Token redemption is the process of converting off-chain tokens (stored in the Link3 database) to on-chain tokens (blockchain tokens).</p>
+                                    <ol>
+                                        <li>User connects their blockchain wallet</li>
+                                        <li>User requests to convert some of their off-chain tokens</li>
+                                        <li>System deducts tokens from user's off-chain balance</li>
+                                        <li>System creates a redemption request</li>
+                                        <li>Background processor sends tokens on the blockchain</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
+                                    Integration Code Example
+                                </button>
+                            </h2>
+                            <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#docAccordion">
+                                <div class="accordion-body">
+                                    <pre><code class="language-javascript">// Initialize the SDK
+const link3 = new Link3SDK({
+  apiKey: 'your-api-key',
+  debug: true
+});
+
+// Set current user
+await link3.setUser('user-123');
+
+// Initialize wallet integration
+const wallet = new Link3Wallet(link3);
+
+// Connect wallet
+await wallet.connect();
+
+// Register and verify wallet
+const result = await wallet.registerAndVerifyWallet('ethereum-1');
+
+// Create redemption
+await wallet.createRedemption(10.5, result.wallet.id);</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
+                                    Redemption Status Meanings
+                                </button>
+                            </h2>
+                            <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#docAccordion">
+                                <div class="accordion-body">
+                                    <ul class="list-unstyled">
+                                        <li><span class="badge bg-warning text-dark">Pending</span> - Request received, waiting to be processed</li>
+                                        <li class="mt-2"><span class="badge bg-info">Processing</span> - Request is being processed, tokens are being sent on-chain</li>
+                                        <li class="mt-2"><span class="badge bg-success">Completed</span> - Tokens successfully sent to wallet on-chain</li>
+                                        <li class="mt-2"><span class="badge bg-danger">Failed</span> - An error occurred during processing</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/link3-sdk.js"></script>
+    <script src="../js/link3-wallet.js"></script>
+    <script>
+        // Add console error logging to help debug any issues
+        const originalConsoleError = console.error;
+        console.error = function() {
+            // Log to original console.error
+            originalConsoleError.apply(console, arguments);
+            
+            // Add to SDK logs for visibility
+            const message = Array.from(arguments).join(' ');
+            addLogEntry(`Console Error: ${message}`, 'error');
+        };
+        // Demo configuration
+        const demoConfig = {
+            apiKey: 'demo_api_key_123',
+            apiUrl: '/api/v1', // Use relative URL for the demo to work on the server
+            mockDelay: 1000, // Milliseconds delay for mock API responses
+            mockUser: {
+                id: 'demo-user-123',
+                name: 'Demo User',
+                token_balance: 100.0
+            }
+        };        // Initialize the SDK
+        const link3 = new Link3SDK({
+            apiKey: demoConfig.apiKey,
+            apiUrl: demoConfig.apiUrl,
+            debug: true
+        });
+        
+        // Override the API call method for demo purposes
+        link3._apiCall = async function(endpoint, data = null) {
+            // Log the request
+            addLogEntry(`API ${data ? 'POST' : 'GET'} request to ${endpoint}`);
+            if (data) {
+                addLogEntry(`Request data: ${JSON.stringify(data)}`, 'code');
+            }
+            
+            // Simulate network delay
+            await new Promise(resolve => setTimeout(resolve, demoConfig.mockDelay));
+            
+            // Mock responses based on endpoints
+            let response;
+            
+            if (endpoint === '/users/identify') {
+                // Simulating user identification (no direct equivalent in the API)
+                response = {
+                    success: true,
+                    user: {
+                        id: demoConfig.mockUser.id,
+                        name: demoConfig.mockUser.name,
+                        token: 'mock-jwt-token-123',
+                    }
+                };
+            } 
+            else if (endpoint === '/users/balance') {
+                // Maps to /users/<external_id>/balance/ or /balance/ in real API
+                response = {
+                    success: true,
+                    balance: demoConfig.mockUser.token_balance
+                };
+            }
+            else if (endpoint === '/blockchain/wallets' || endpoint === '/wallets/') {
+                // Maps to /wallets/ in real API
+                response = {
+                    success: true,
+                    wallets: localStorage.getItem('demo_wallets') ? 
+                        JSON.parse(localStorage.getItem('demo_wallets')) : []
+                };
+            }
+            else if (endpoint === '/blockchain/wallets/add' || endpoint === '/wallets/') {
+                // Maps to POST /wallets/ in real API
+                const newWallet = {
+                    id: 'wallet_' + Date.now(),
+                    address: data.address,
+                    network_id: data.network_id || data.network, // Handle different parameter names
+                    network_name: (data.network_id || data.network) === 'ethereum-1' ? 'Ethereum Mainnet' : 'Sei',
+                    is_verified: false,
+                    created_at: new Date().toISOString()
+                };
+                
+                // Store wallet in localStorage for demo
+                const wallets = localStorage.getItem('demo_wallets') ? 
+                    JSON.parse(localStorage.getItem('demo_wallets')) : [];
+                wallets.push(newWallet);
+                localStorage.setItem('demo_wallets', JSON.stringify(wallets));
+                
+                response = {
+                    success: true,
+                    wallet: newWallet
+                };
+            }            else if (endpoint === '/blockchain/wallets/verification-message') {
+                // Generate a verification message for the wallet
+                const walletId = data.wallet_id || '';
+                response = {
+                    success: true,
+                    message: `Link3: Verify wallet ownership for wallet ${walletId}`
+                };
+            }
+            else if (endpoint === '/blockchain/wallets/verify') {
+                // No direct equivalent in the API, but needed for the demo flow
+                // Update wallet verification status
+                const wallets = localStorage.getItem('demo_wallets') ? 
+                    JSON.parse(localStorage.getItem('demo_wallets')) : [];
+                
+                const walletId = data.wallet_id || data.id; // Handle different parameter names
+                const walletIndex = wallets.findIndex(w => w.id === walletId);
+                if (walletIndex !== -1) {
+                    wallets[walletIndex].is_verified = true;
+                    localStorage.setItem('demo_wallets', JSON.stringify(wallets));
+                    
+                    response = {
+                        success: true,
+                        wallet: wallets[walletIndex]
+                    };
+                } else {
+                    throw new Error('Wallet not found');
+                }
+            }
+            else if (endpoint === '/blockchain/redemptions/create' || endpoint === '/redeem-blockchain/') {
+                // Maps to /redeem-blockchain/ in real API
+                // Reduce user's balance
+                demoConfig.mockUser.token_balance -= data.amount;
+                
+                // Create a new redemption
+                const newRedemption = {
+                    id: 'redemption_' + Date.now(),
+                    user_id: demoConfig.mockUser.id,
+                    amount: data.amount,
+                    wallet_id: data.wallet_id || data.walletId, // Handle different parameter names
+                    wallet_address: data.wallet_address || '', // For real API compatibility
+                    status: 'pending',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                };
+                
+                // Store in localStorage
+                const redemptions = localStorage.getItem('demo_redemptions') ? 
+                    JSON.parse(localStorage.getItem('demo_redemptions')) : [];
+                redemptions.push(newRedemption);
+                localStorage.setItem('demo_redemptions', JSON.stringify(redemptions));
+                
+                // Auto-process after a delay (simulate background processing)
+                setTimeout(() => {
+                    processRedemption(newRedemption.id);
+                }, 5000);
+                
+                response = {
+                    success: true,
+                    redemption: newRedemption
+                };
+            }
+            else if (endpoint === '/blockchain/redemptions' || endpoint.includes('redemption')) {
+                // Handle various redemption endpoints
+                const redemptions = localStorage.getItem('demo_redemptions') ? 
+                    JSON.parse(localStorage.getItem('demo_redemptions')) : [];
+                
+                // Check if it's a specific redemption request
+                if (endpoint.includes('/') && endpoint.split('/').pop() !== 'redemptions') {
+                    const redemptionId = endpoint.split('/').pop();
+                    const redemption = redemptions.find(r => r.id === redemptionId);
+                    
+                    if (redemption) {
+                        response = {
+                            success: true,
+                            redemption: redemption
+                        };
+                    } else {
+                        throw new Error('Redemption not found');
+                    }
+                } else {
+                    // Return all redemptions for the user
+                    response = {
+                        success: true,
+                        redemptions: redemptions.filter(r => r.user_id === demoConfig.mockUser.id)
+                    };
+                }
+            }
+            else {
+                // Default response for unknown endpoints
+                console.warn(`Unimplemented endpoint in demo: ${endpoint}`);
+                response = {
+                    success: false,
+                    error: 'Endpoint not implemented in demo'
+                };
+            }
+            
+            // Log the response
+            addLogEntry(`API response: ${JSON.stringify(response)}`, 'code');
+            
+            return response;
+        };
+
+        // Initialize wallet integration
+        const walletManager = new Link3Wallet(link3);
+        
+        // DOM elements
+        const connectWalletBtn = document.getElementById('connectWalletBtn');
+        const connectWalletBtnMain = document.getElementById('connectWalletBtnMain');
+        const walletStatus = document.getElementById('walletStatus');
+        const walletInfo = document.getElementById('walletInfo');
+        const walletAddress = document.getElementById('walletAddress');
+        const walletNetwork = document.getElementById('walletNetwork');
+        const registerWalletBtn = document.getElementById('registerWalletBtn');
+        const registeredWalletInfo = document.getElementById('registeredWalletInfo');
+        const redemptionForm = document.getElementById('redemptionForm');
+        const redemptionAmount = document.getElementById('redemptionAmount');
+        const createRedemptionBtn = document.getElementById('createRedemptionBtn');
+        const noRedemptions = document.getElementById('noRedemptions');
+        const redemptionsList = document.getElementById('redemptionsList');
+        const redemptionsTableBody = document.getElementById('redemptionsTableBody');
+        const refreshRedemptionsBtn = document.getElementById('refreshRedemptionsBtn');
+        const offChainBalance = document.getElementById('offChainBalance');
+        const sdkLogs = document.getElementById('sdkLogs');
+        const clearLogsBtn = document.getElementById('clearLogsBtn');
+        const taskButtons = document.querySelectorAll('.task-button');
+        const taskHistory = document.getElementById('taskHistory');
+        
+        // Step elements for progression
+        const step1 = document.getElementById('step1');
+        const step2 = document.getElementById('step2');
+        const step3 = document.getElementById('step3');
+        const step4 = document.getElementById('step4');
+          // Initialize demo by setting the user
+        async function initializeDemo() {
+            try {
+                // Reset state for clean demo (uncomment if you want to clear existing data)
+                // localStorage.removeItem('demo_wallets');
+                // localStorage.removeItem('demo_redemptions');
+                
+                // Set the user in the SDK
+                await link3.setUser(demoConfig.mockUser.id);
+                
+                // Update the balance display
+                updateBalanceDisplay();
+                
+                // Load existing redemptions if any
+                loadRedemptions();
+                
+                addLogEntry('Demo initialized successfully', 'success');
+                
+                // Reset any previous wallet connection state
+                window.registeredWalletId = null;
+                
+                // Update UI if MetaMask is already connected
+                if (typeof window.ethereum !== 'undefined') {
+                    try {
+                        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                        if (accounts && accounts.length > 0) {
+                            addLogEntry('Found existing wallet connection, reconnecting...');
+                            await connectWallet();
+                        }
+                    } catch (e) {
+                        // Ignore error, user will need to click connect manually
+                    }
+                }
+            } catch (error) {
+                addLogEntry(`Error initializing demo: ${error.message}`, 'error');
+            }
+        }
+        
+        // Update balance display
+        async function updateBalanceDisplay() {
+            try {
+                const balance = await link3.getBalance();
+                offChainBalance.textContent = `${balance} tokens`;
+            } catch (error) {
+                offChainBalance.textContent = 'Error loading balance';
+                addLogEntry(`Error loading balance: ${error.message}`, 'error');
+            }
+        }        // Connect wallet
+        async function connectWallet() {
+            try {
+                addLogEntry('Connecting wallet...');
+                
+                // Check if MetaMask is installed
+                if (typeof window.ethereum === 'undefined') {
+                    addLogEntry('MetaMask is not installed. Please install MetaMask to continue.', 'error');
+                    alert('MetaMask is not installed. Please install MetaMask to continue with the demo.');
+                    return;
+                }
+                
+                // Use the walletManager to connect
+                // This ensures all internal state is properly set
+                const result = await walletManager.connect();
+                const address = result.address;
+                const networkName = result.networkName;
+                
+                // Update UI
+                walletStatus.textContent = `Connected: ${shortenAddress(address)}`;
+                walletInfo.classList.remove('d-none');
+                walletAddress.textContent = address;
+                walletNetwork.textContent = networkName;
+                
+                // Enable next step
+                step2.classList.remove('opacity-50');
+                registerWalletBtn.disabled = false;
+                
+                // Modify connect button
+                connectWalletBtn.textContent = 'Connected';
+                connectWalletBtn.disabled = true;
+                connectWalletBtnMain.textContent = 'Connected';
+                connectWalletBtnMain.disabled = true;
+                
+                addLogEntry(`Wallet connected: ${address} (${networkName})`, 'success');
+                
+                return result;
+            } catch (error) {
+                addLogEntry(`Error connecting wallet: ${error.message}`, 'error');
+                alert('Error connecting to MetaMask: ' + error.message);
+                throw error;
+            }
+        }
+        
+        // Helper function to get network name from chain ID
+        function getNetworkName(chainId) {
+            const networks = {
+                '0x1': 'Ethereum Mainnet',
+                '0x3': 'Ropsten',
+                '0x4': 'Rinkeby',
+                '0x5': 'Goerli',
+                '0x2a': 'Kovan',
+                '0x89': 'Polygon',
+                '0xa86a': 'Avalanche',
+                '0x38': 'BSC',
+                '0xfa': 'Fantom'
+            };
+            
+            return networks[chainId] || `Chain ID: ${chainId}`;
+        }        // Register and verify wallet - Direct approach for the demo
+        async function registerAndVerifyWallet() {
+            try {
+                addLogEntry('Registering wallet...');
+                
+                // Check if we need to connect the wallet first
+                if (!walletManager.isConnected()) {
+                    addLogEntry('Wallet not connected. Attempting to connect first...');
+                    try {
+                        await connectWallet();
+                    } catch (e) {
+                        throw new Error("Failed to connect wallet: " + e.message);
+                    }
+                }
+                
+                // Double-check connection
+                if (!walletManager.isConnected()) {
+                    throw new Error("Wallet connection failed");
+                }
+                
+                const walletAddress = walletManager.getAddress();
+                addLogEntry(`Using wallet address: ${walletAddress}`);
+                
+                // Get network info
+                const walletNetwork = walletManager.getNetwork();
+                const networkId = 'ethereum-1'; // Default to Ethereum mainnet for demo
+                
+                // Step 2: Create a mock wallet (bypassing API issues)
+                const wallet = {
+                    id: 'wallet_' + Date.now(),
+                    address: walletAddress,
+                    network_id: networkId,
+                    network_name: walletNetwork?.name || 'Ethereum Mainnet',
+                    is_verified: true,  // Auto-verify for demo
+                    created_at: new Date().toISOString()
+                };
+                
+                // Store in localStorage for persistence
+                const wallets = localStorage.getItem('demo_wallets') ? 
+                    JSON.parse(localStorage.getItem('demo_wallets')) : [];
+                wallets.push(wallet);
+                localStorage.setItem('demo_wallets', JSON.stringify(wallets));
+                
+                addLogEntry(`Wallet registered with ID: ${wallet.id}`, 'success');
+                
+                // For demo purposes, skip actually signing a message
+                addLogEntry('Wallet verification successful!', 'success');
+                
+                // Update UI
+                registeredWalletInfo.classList.remove('d-none');
+                registerWalletBtn.textContent = 'Wallet Verified';
+                registerWalletBtn.disabled = true;
+                
+                // Store wallet ID for redemption
+                window.registeredWalletId = wallet.id;
+                
+                // Enable next step
+                step2.classList.add('completed-step');
+                step3.classList.remove('opacity-50');
+                step3.classList.add('current-step');
+                redemptionAmount.disabled = false;
+                createRedemptionBtn.disabled = false;
+                
+                return { wallet: wallet, verified: true };
+            } catch (error) {
+                addLogEntry(`Error registering wallet: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+          // Create redemption request
+        async function createRedemption(amount) {
+            try {
+                if (!window.registeredWalletId) {
+                    throw new Error('No verified wallet available');
+                }
+                
+                addLogEntry(`Creating redemption request for ${amount} tokens...`);
+                
+                // Get the wallet details
+                const wallets = JSON.parse(localStorage.getItem('demo_wallets') || '[]');
+                const wallet = wallets.find(w => w.id === window.registeredWalletId);
+                
+                if (!wallet) {
+                    throw new Error('Could not find the registered wallet');
+                }
+                
+                // Create a mock redemption directly
+                const newRedemption = {
+                    id: 'redemption_' + Date.now(),
+                    user_id: demoConfig.mockUser.id,
+                    amount: amount,
+                    wallet_id: window.registeredWalletId,
+                    wallet_address: wallet.address,
+                    status: 'pending',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                };
+                
+                // Store in localStorage
+                const redemptions = JSON.parse(localStorage.getItem('demo_redemptions') || '[]');
+                redemptions.push(newRedemption);
+                localStorage.setItem('demo_redemptions', JSON.stringify(redemptions));
+                
+                // Update user's balance
+                demoConfig.mockUser.token_balance -= amount;
+                
+                // Update UI
+                updateBalanceDisplay();
+                loadRedemptions();
+                redemptionForm.reset();
+                
+                // Enable next step
+                step3.classList.add('completed-step');
+                step3.classList.remove('current-step');
+                step4.classList.remove('opacity-50');
+                step4.classList.add('current-step');
+                
+                // Auto-process after a delay (simulate background processing)
+                setTimeout(() => {
+                    processRedemption(newRedemption.id);
+                }, 5000);
+                
+                addLogEntry(`Redemption created: ${newRedemption.id}`, 'success');
+                
+                return { redemption: newRedemption };
+            } catch (error) {
+                addLogEntry(`Error creating redemption: ${error.message}`, 'error');
+            }
+        }
+          // Load redemptions
+        async function loadRedemptions() {
+            try {
+                addLogEntry('Loading redemptions...');
+                
+                // Get redemptions directly from localStorage
+                const storedRedemptions = localStorage.getItem('demo_redemptions');
+                const allRedemptions = storedRedemptions ? JSON.parse(storedRedemptions) : [];
+                
+                // Filter to get only current user's redemptions
+                const redemptions = allRedemptions.filter(r => r.user_id === demoConfig.mockUser.id);
+                
+                if (redemptions.length > 0) {
+                    noRedemptions.classList.add('d-none');
+                    redemptionsList.classList.remove('d-none');
+                    
+                    // Clear and populate the table
+                    redemptionsTableBody.innerHTML = '';
+                    redemptions.forEach(redemption => {
+                        const row = document.createElement('tr');
+                        
+                        // Determine badge color
+                        let badgeClass = 'bg-secondary';
+                        if (redemption.status === 'pending') badgeClass = 'bg-warning text-dark';
+                        if (redemption.status === 'processing') badgeClass = 'bg-info';
+                        if (redemption.status === 'completed') badgeClass = 'bg-success';
+                        if (redemption.status === 'failed') badgeClass = 'bg-danger';
+                        
+                        row.innerHTML = `
+                            <td>${shortenId(redemption.id)}</td>
+                            <td>${redemption.amount} tokens</td>
+                            <td><span class="badge ${badgeClass} status-badge">${redemption.status}</span></td>
+                            <td>${redemption.transaction_hash ? 
+                                `<code>${shortenAddress(redemption.transaction_hash)}</code>` : 
+                                '<span class="text-muted">Not available yet</span>'}
+                            </td>
+                        `;
+                        
+                        redemptionsTableBody.appendChild(row);
+                    });
+                    
+                    addLogEntry(`Loaded ${redemptions.length} redemption(s)`, 'success');
+                } else {
+                    noRedemptions.classList.remove('d-none');
+                    redemptionsList.classList.add('d-none');
+                    addLogEntry('No redemptions found', 'success');
+                }
+            } catch (error) {
+                addLogEntry(`Error loading redemptions: ${error.message}`, 'error');
+            }
+        }
+        
+        // Helper: Shorten address for display
+        function shortenAddress(address) {
+            if (!address) return '';
+            return address.substring(0, 6) + '...' + address.substring(address.length - 4);
+        }
+        
+        // Helper: Shorten ID
+        function shortenId(id) {
+            if (!id) return '';
+            return id.substring(0, 8) + '...';
+        }
+        
+        // Helper: Add log entry to SDK logs
+        function addLogEntry(message, type = '') {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            
+            const timestamp = new Date().toLocaleTimeString();
+            
+            if (type === 'code') {
+                entry.innerHTML = `<span class="text-muted">[${timestamp}]</span> <pre>${message}</pre>`;
+            } else if (type === 'success') {
+                entry.innerHTML = `<span class="text-muted">[${timestamp}]</span> <span class="success">✓ ${message}</span>`;
+            } else if (type === 'error') {
+                entry.innerHTML = `<span class="text-muted">[${timestamp}]</span> <span class="error">✗ ${message}</span>`;
+            } else {
+                entry.innerHTML = `<span class="text-muted">[${timestamp}]</span> ${message}`;
+            }
+            
+            sdkLogs.appendChild(entry);
+            sdkLogs.scrollTop = sdkLogs.scrollHeight;
+        }
+          // Helper: Process redemption for demo (simulate background processing)
+        function processRedemption(redemptionId) {
+            try {
+                // Log the processing
+                addLogEntry(`Processing redemption: ${redemptionId}...`);
+                
+                // Get redemptions from localStorage
+                const redemptions = JSON.parse(localStorage.getItem('demo_redemptions') || '[]');
+                const index = redemptions.findIndex(r => r.id === redemptionId);
+                
+                if (index !== -1) {
+                    // Update to processing
+                    redemptions[index].status = 'processing';
+                    localStorage.setItem('demo_redemptions', JSON.stringify(redemptions));
+                    
+                    // Update UI if visible
+                    loadRedemptions();
+                    
+                    // After another delay, complete the redemption
+                    setTimeout(() => {
+                        try {
+                            const updatedRedemptions = JSON.parse(localStorage.getItem('demo_redemptions') || '[]');
+                            const updatedIndex = updatedRedemptions.findIndex(r => r.id === redemptionId);
+                            
+                            if (updatedIndex !== -1) {
+                                // Generate fake transaction hash
+                                const txHash = '0x' + Array(40).fill(0).map(() => 
+                                    Math.floor(Math.random() * 16).toString(16)).join('');
+                                    
+                                // Update to completed with transaction hash
+                                updatedRedemptions[updatedIndex].status = 'completed';
+                                updatedRedemptions[updatedIndex].transaction_hash = txHash;
+                                localStorage.setItem('demo_redemptions', JSON.stringify(updatedRedemptions));
+                                
+                                // Log the completion
+                                addLogEntry(`Redemption ${redemptionId} completed! Transaction: ${txHash.substring(0, 10)}...`, 'success');
+                                
+                                // Update UI if visible
+                                loadRedemptions();
+                            }
+                        } catch (error) {
+                            addLogEntry(`Error completing redemption: ${error.message}`, 'error');
+                        }
+                    }, 5000);
+                }
+            } catch (error) {
+                addLogEntry(`Error processing redemption: ${error.message}`, 'error');
+            }
+        }
+        
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize the demo
+            initializeDemo();
+            
+            // Connect wallet buttons
+            connectWalletBtn.addEventListener('click', connectWallet);
+            connectWalletBtnMain.addEventListener('click', connectWallet);
+            
+            // Register wallet button
+            registerWalletBtn.addEventListener('click', registerAndVerifyWallet);
+            
+            // Redemption form
+            redemptionForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const amount = parseFloat(redemptionAmount.value);
+                if (amount > 0) {
+                    createRedemption(amount);
+                }
+            });
+            
+            // Refresh redemptions button
+            refreshRedemptionsBtn.addEventListener('click', loadRedemptions);
+            
+            // Clear logs button
+            clearLogsBtn.addEventListener('click', () => {
+                sdkLogs.innerHTML = '';
+            });
+            
+            // Task buttons
+            taskButtons.forEach(button => {
+                button.addEventListener('click', async (e) => {
+                    const taskType = e.target.getAttribute('data-task-type');
+                    const tokens = parseInt(e.target.getAttribute('data-tokens'));
+                    
+                    // Disable button temporarily
+                    button.disabled = true;
+                    const originalText = button.textContent;
+                    button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+                    
+                    try {
+                        // Simulate interaction recording
+                        await new Promise(resolve => setTimeout(resolve, 1500));
+                        
+                        // Record the interaction using SDK
+                        await link3.recordInteraction(taskType, {
+                            tokens_earned: tokens,
+                            timestamp: new Date().toISOString()
+                        });
+                        
+                        // Update token balance
+                        demoConfig.mockUser.token_balance += tokens;
+                        await updateBalanceDisplay();
+                        
+                        // Format task name for display
+                        const taskName = taskType.split('_')
+                            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                            .join(' ');
+                        
+                        // Add to task history with timestamp
+                        const now = new Date();
+                        const timestamp = now.toLocaleTimeString();
+                        
+                        const taskLog = document.createElement('div');
+                        taskLog.className = 'task-history-item d-flex align-items-center mb-1';
+                        taskLog.innerHTML = `
+                            <span class="badge bg-success me-2">✓</span>
+                            <strong class="me-2">${taskName}:</strong>
+                            <span class="text-success me-1">+${tokens} tokens</span>
+                            <span class="text-muted ms-auto">${timestamp}</span>
+                        `;
+                        
+                        // Insert at the beginning, not the end
+                        if (taskHistory.firstChild) {
+                            taskHistory.insertBefore(taskLog, taskHistory.firstChild);
+                        } else {
+                            taskHistory.appendChild(taskLog);
+                        }
+                        
+                        // Limit history to last 10 entries
+                        if (taskHistory.childElementCount > 10) {
+                            taskHistory.removeChild(taskHistory.lastChild);
+                        }
+                        
+                        // Add to main logs
+                        addLogEntry(`Task completed: ${taskName} (+${tokens} tokens)`, 'success');
+                        
+                    } catch (error) {
+                        addLogEntry(`Error completing task: ${error.message}`, 'error');
+                    } finally {
+                        // Re-enable button
+                        button.disabled = false;
+                        button.textContent = originalText;
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
