@@ -48,6 +48,7 @@ urlpatterns = [
     path('login/', login_view, name='login'),
     path('signup/', signup_view, name='signup'),
     path('logout/', logout_view, name='logout'),
+    path('auth/', include('authentication.urls', namespace='authentication')),
     
     path('admin/', admin.site.urls),
     

@@ -14,6 +14,8 @@ class DeveloperProfile(models.Model):
     verification_sent_at = models.DateTimeField(blank=True, null=True)
     company_name = models.CharField(max_length=255, blank=True, null=True)
     website = models.URLField(blank=True, null=True)
+    wallet_address = models.CharField(max_length=255, blank=True, null=True)
+    reown_id = models.CharField(max_length=255, blank=True, null=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

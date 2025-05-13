@@ -316,3 +316,11 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Add these to your settings.py file
+
+# Reown AppKit Configuration
+REOWN_API_URL = os.environ.get('REOWN_API_URL', 'https://api.reown.com/v1')
+REOWN_CLIENT_ID = os.environ.get('REOWN_CLIENT_ID', 'link3')
+REOWN_CLIENT_SECRET = os.environ.get('REOWN_CLIENT_SECRET', '56b29646dee3d7b8afbe2071a2cf088d')
+
+# Make Reown settings available in templates
+TEMPLATES[0]['OPTIONS']['context_processors'].append('authentication.context_processors.reown_settings')

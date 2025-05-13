@@ -160,19 +160,30 @@
                                 <button type="submit" class="btn btn-primary">Create Account</button>
                             </div>
                         </form>
-                        
-                        <div class="mt-4 text-center">
-                            <p class="mb-3">Or sign up with</p>
-                            <div class="social-signup">
-                                <a href="#" class="social-btn google">
-                                    <i class="fab fa-google"></i>
-                                </a>
-                                <a href="#" class="social-btn github">
-                                    <i class="fab fa-github"></i>
-                                </a>
-                                <a href="#" class="social-btn twitter">
-                                    <i class="fab fa-twitter"></i>
-                                </a>
+                          <div class="mt-4">
+                            <div class="row">
+                                <div class="col-12 text-center mb-3">
+                                    <p class="mb-2">Or sign up with</p>
+                                </div>
+                                <div class="col-12 mb-3">
+                                    <button type="button" id="reownSignupBtn" class="btn btn-dark d-flex align-items-center justify-content-center w-100">
+                                        <img src="{% static 'images/reown-logo.png' %}" alt="Reown" height="24" class="me-2" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTguMiA4LjIgOC4yIDE4LjIiLz48cGF0aCBkPSJNMTAgNHYxNGE0IDQgMCAwIDEtNC00VjhtMTEgNUgzbS0xLTlMMTkgMyIvPjwvc3ZnPg=='; this.onerror=null;">
+                                        Connect with Web3 Wallet
+                                    </button>
+                                </div>
+                                <div class="col-12">
+                                    <div class="social-signup">
+                                        <a href="#" class="social-btn google">
+                                            <i class="fab fa-google"></i>
+                                        </a>
+                                        <a href="#" class="social-btn github">
+                                            <i class="fab fa-github"></i>
+                                        </a>
+                                        <a href="#" class="social-btn twitter">
+                                            <i class="fab fa-twitter"></i>
+                                        </a>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -184,10 +195,110 @@
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+        </div>    </div>    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>    <!-- Set global variables for Reown -->
+    <script>
+        // Use the client secret as the project ID
+        window.REOWN_CLIENT_ID = "{{ REOWN_CLIENT_ID|default:'56b29646dee3d7b8afbe2071a2cf088d' }}";
+    </script>
+    <!-- Reown AppKit Integration -->
+    <script src="{% static 'js/vite/reown.umd.js' %}" data-client-id="{{ REOWN_CLIENT_ID }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {            // Initialize Reown AppKit Connector
+            console.log('Initializing Reown AppKit Connector with client ID: {{ REOWN_CLIENT_ID }}');
+            const reownConnector = new ReownAppkitConnector({
+                clientId: '{{ REOWN_CLIENT_ID|default:"link3" }}',
+                redirectUrl: window.location.origin + window.location.pathname,
+                callbackPath: '/auth/reown/callback/',
+                onLoginSuccess: function(data) {
+                    // Redirect to dashboard or confirmation page
+                    window.location.href = data.redirect_url || '/developer_portal/dashboard/';
+                },
+                onLoginError: function(error) {
+                    // Display error message
+                    const alertContainer = document.createElement('div');
+                    alertContainer.className = 'alert alert-danger alert-dismissible fade show';
+                    alertContainer.role = 'alert';
+                    alertContainer.innerHTML = `
+                        <strong>Authentication Error:</strong> ${error.message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    `;
+                    
+                    const cardBody = document.querySelector('.card-body');
+                    cardBody.insertBefore(alertContainer, cardBody.firstChild);
+                }
+            });
+              // Handle Reown signup button click
+            const reownSignupBtn = document.getElementById('reownSignupBtn');
+            if (reownSignupBtn) {
+                reownSignupBtn.addEventListener('click', async function() {
+                    try {
+                        // Update button state
+                        reownSignupBtn.disabled = true;
+                        reownSignupBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Connecting...';
+                        
+                        // Remove any existing alerts
+                        const existingAlert = document.querySelector('.alert-connection-notice');
+                        if (existingAlert) {
+                            existingAlert.remove();
+                        }
+                        
+                        // Simple timeout to ensure button doesn't get stuck if there's a total failure
+                        setTimeout(() => {
+                            if (reownSignupBtn.disabled) {
+                                reownSignupBtn.disabled = false;
+                                reownSignupBtn.innerHTML = '<i class="fas fa-wallet me-2"></i> Connect with Web3 Wallet';
+                            }
+                        }, 30000);
+                        
+                        // Call the login method
+                        await reownConnector.login();
+                    } catch (error) {
+                        console.error('Reown login error:', error);
+                        
+                        // Display error message to user
+                        const alertContainer = document.createElement('div');
+                        alertContainer.className = 'alert alert-warning alert-dismissible fade show mt-3 alert-connection-notice';
+                        alertContainer.role = 'alert';
+                        
+                        // Format the error message for better UX
+                        let errorMsg = error.message || 'Authentication failed';
+                        if (errorMsg.includes('403') || errorMsg.includes('Connection') || errorMsg.includes('interrupted')) {
+                            errorMsg = 'Web3 wallet connection service is temporarily unavailable. Please try again later or use email signup. This may be due to missing project configuration in Reown Cloud.';
+                        }
+                        
+                        alertContainer.innerHTML = `
+                            <strong>Connection Notice:</strong> ${errorMsg}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        `;
+                        
+                        const buttonParent = reownSignupBtn.closest('.col-12');
+                        buttonParent.appendChild(alertContainer);
+                        
+                        // Reset button
+                        reownSignupBtn.disabled = false;
+                        reownSignupBtn.innerHTML = '<i class="fas fa-wallet me-2"></i> Connect with Web3 Wallet';
+                    }
+                });
+            }
+            
+            // Check if this is a callback URL
+            if (reownConnector.isCallbackUrl()) {
+                // Show loading indicator
+                const loadingElement = document.createElement('div');
+                loadingElement.className = 'text-center py-4';
+                loadingElement.innerHTML = `
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Completing authentication...</p>
+                `;
+                
+                const cardBody = document.querySelector('.card-body');
+                cardBody.innerHTML = '';
+                cardBody.appendChild(loadingElement);
+            }
+        });
+    </script>
 </body>
 </html>
