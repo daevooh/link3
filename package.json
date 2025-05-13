@@ -1,0 +1,20 @@
+{
+  "name": "link3-reown-integration",
+  "version": "1.0.0",
+  "description": "Link3 developer portal with Reown AppKit integration",
+  "main": "index.js",
+  "scripts": {
+    "build": "vite build"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@reown/appkit": "^1.7.4",
+    "@reown/appkit-adapter-ethers": "^1.7.4",
+    "@reown/appkit-adapter-ethers5": "^1.7.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-legacy": "^6.1.1",
+    "vite": "^6.3.5"
+  }
+}
